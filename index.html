@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabbler - Steampunk Word Validator</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="steampunk-header">
+            <h1>
+                <span class="tile-letter">S<span class="points">1</span></span>
+                <span class="tile-letter">C<span class="points">3</span></span>
+                <span class="tile-letter">R<span class="points">1</span></span>
+                <span class="tile-letter">A<span class="points">1</span></span>
+                <span class="tile-letter">B<span class="points">3</span></span>
+                <span class="tile-letter">B<span class="points">3</span></span>
+                <span class="tile-letter">L<span class="points">1</span></span>
+                <span class="tile-letter">E<span class="points">1</span></span>
+                <span class="tile-letter">R<span class="points">1</span></span>
+            </h1>
+        </header>
+
+        <!-- Main Letter Wheel Section -->
+        <section class="letter-wheel-section">
+            <div class="brass-frame">
+                <!-- Slot machine lights -->
+                <div class="light-strip top-lights">
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                </div>
+                <div class="light-strip bottom-lights">
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+                </div>
+
+                <div class="frame-corner top-left"></div>
+                <div class="frame-corner top-right"></div>
+                <div class="frame-corner bottom-left"></div>
+                <div class="frame-corner bottom-right"></div>
+                <div class="rivet rivet-1"></div>
+                <div class="rivet rivet-2"></div>
+                <div class="rivet rivet-3"></div>
+                <div class="rivet rivet-4"></div>
+
+                <div id="canvas-container">
+                    <canvas id="letter-wheel-canvas"></canvas>
+                    <!-- Match counter (shown in pattern mode) -->
+                    <div id="match-counter" class="match-counter hidden"></div>
+                    <!-- Pattern Lock Toggle -->
+                    <div class="pattern-lock-container">
+                        <label class="pattern-lock-toggle">
+                            <input type="checkbox" id="pattern-lock-toggle">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Lock Pattern</span>
+                        </label>
+                    </div>
+                    <!-- Slot lock sliders (shown when pattern lock is on) -->
+                    <div id="slot-locks" class="slot-locks hidden"></div>
+                    <!-- Instructions overlay -->
+                    <div class="instructions">
+                        <p><kbd>Type</kbd> to enter letters &bull; <kbd>&larr;</kbd><kbd>&rarr;</kbd> move cursor &bull; <kbd>&uarr;</kbd><kbd>&darr;</kbd> cycle letters &bull; <kbd>Enter</kbd> validate &bull; <kbd>Backspace</kbd> clear</p>
+                    </div>
+                    <!-- Clear Wheel Button (inside canvas) -->
+                    <button id="clear-wheel-btn" class="clear-wheel-btn" title="Clear Word Wheel">
+                        <span>&#8634;</span>
+                    </button>
+                </div>
+                <!-- Word Lists Button (left) -->
+                <button id="word-lists-btn" class="wheel-btn left" title="Word Lists">
+                    <span>&#9776;</span>
+                </button>
+                <!-- Random Word Button (right) -->
+                <button id="random-word-btn" class="wheel-btn right" title="Random Word">
+                    <span>&#127922;</span>
+                </button>
+            </div>
+
+            <!-- Validation Result Display -->
+            <div id="validation-display" class="validation-display hidden">
+                <div class="validation-plate">
+                    <span id="validation-icon"></span>
+                    <span id="validation-text"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Letter Rack Section -->
+        <section class="letter-rack-section">
+            <h2>Letter Rack</h2>
+            <p class="rack-hint">Use <kbd>?</kbd> for wild tile</p>
+            <div class="wooden-rack">
+                <div id="letter-rack" class="rack-tiles">
+                    <!-- 7 tiles will be generated by JS -->
+                </div>
+            </div>
+            <div class="rack-filters">
+                <div class="filter-group">
+                    <label for="starts-with">Starts with</label>
+                    <input type="text" id="starts-with" maxlength="5" placeholder="e.g. UN">
+                </div>
+                <div class="filter-group">
+                    <label for="contains">Contains</label>
+                    <input type="text" id="contains" maxlength="5" placeholder="e.g. QU">
+                </div>
+                <div class="filter-group">
+                    <label for="ends-with">Ends with</label>
+                    <input type="text" id="ends-with" maxlength="5" placeholder="e.g. ING">
+                </div>
+            </div>
+            <div class="rack-controls">
+                <button id="find-words-btn" class="brass-button">Find Words</button>
+                <button id="clear-rack-btn" class="brass-button secondary">Clear</button>
+            </div>
+
+            <!-- Anagram Results -->
+            <div id="anagram-results" class="anagram-results hidden">
+                <h3>Valid Words</h3>
+                <div id="word-list" class="word-list"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Word Lists Modal -->
+    <div id="word-lists-modal" class="word-lists-modal hidden">
+        <div class="word-lists-content">
+            <button class="close-btn" id="close-word-lists">&times;</button>
+            <h2>Word Lists</h2>
+            <div class="word-lists-categories">
+                <button class="category-btn" data-category="2-letter">2-Letter Words</button>
+                <button class="category-btn" data-category="3-letter">3-Letter Words</button>
+                <button class="category-btn" data-category="q-no-u">Q without U</button>
+                <button class="category-btn" data-category="j-words">J Words</button>
+                <button class="category-btn" data-category="x-words">X Words</button>
+                <button class="category-btn" data-category="q-words">Q Words</button>
+                <button class="category-btn" data-category="z-words">Z Words</button>
+                <button class="category-btn" data-category="vowel-heavy">Vowel Heavy</button>
+            </div>
+            <div id="word-lists-results" class="word-lists-results"></div>
+            <div id="word-lists-search" class="word-lists-search hidden">
+                <button id="filter-prev" class="filter-nav-btn" title="Previous match">&larr;</button>
+                <input type="text" id="word-lists-filter" placeholder="Type to filter..." maxlength="10">
+                <button id="filter-next" class="filter-nav-btn" title="Next match">&rarr;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Definition Modal -->
+    <div id="definition-modal" class="definition-modal hidden">
+        <div class="definition-content">
+            <button class="close-btn" id="close-definition">&times;</button>
+            <h2 id="definition-word"></h2>
+            <p id="definition-phonetic" class="phonetic"></p>
+            <div id="definition-body"></div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
