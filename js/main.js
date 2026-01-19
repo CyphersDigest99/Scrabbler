@@ -124,13 +124,55 @@ class Scrabbler {
         // Start tour for first-time visitors
         this.tour.start();
 
-        // Help button to restart tour
+        // Set up instructions modal
+        this.setupInstructionsModal();
+    }
+
+    setupInstructionsModal() {
+        this.instructionsModal = document.getElementById('instructions-modal');
         const helpBtn = document.getElementById('help-btn');
+        const closeBtn = document.getElementById('close-instructions');
+        const gotItBtn = document.getElementById('instructions-close-btn');
+
+        // Help button opens instructions
         if (helpBtn) {
             helpBtn.addEventListener('click', () => {
-                this.tour.forceStart();
+                this.instructionsModal.classList.remove('hidden');
             });
         }
+
+        // Close button
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeInstructionsModal();
+            });
+        }
+
+        // Got it button
+        if (gotItBtn) {
+            gotItBtn.addEventListener('click', () => {
+                this.closeInstructionsModal();
+            });
+        }
+
+        // Click outside to close
+        this.instructionsModal.addEventListener('click', (e) => {
+            if (e.target === this.instructionsModal) {
+                this.closeInstructionsModal();
+            }
+        });
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !this.instructionsModal.classList.contains('hidden')) {
+                this.closeInstructionsModal();
+            }
+        });
+    }
+
+    closeInstructionsModal() {
+        this.instructionsModal.classList.add('hidden');
+        this.canvas.focus();
     }
 
     setupEventListeners() {

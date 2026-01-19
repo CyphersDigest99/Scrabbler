@@ -180,8 +180,53 @@
         </div>
     </div>
 
-    <!-- Help Button (restarts tour) -->
-    <button id="help-btn" class="help-btn" title="Show Tutorial">?</button>
+    <!-- Instructions Modal -->
+    <div id="instructions-modal" class="instructions-modal hidden">
+        <div class="instructions-content">
+            <button class="close-btn" id="close-instructions">&times;</button>
+            <h2>How to Play</h2>
+            <p class="instructions-subtitle">Your steampunk Scrabble word validator</p>
+
+            <div class="instructions-sections">
+                <div class="instructions-section">
+                    <h3>Letter Wheel</h3>
+                    <ul>
+                        <li><kbd>Type</kbd> letters to spin the drums</li>
+                        <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move cursor between slots</li>
+                        <li><kbd>&uarr;</kbd> <kbd>&darr;</kbd> cycle through letters</li>
+                        <li><kbd>Enter</kbd> validate your word</li>
+                        <li><kbd>Backspace</kbd> clear current slot</li>
+                        <li>On mobile: swipe up/down to spin drums</li>
+                    </ul>
+                </div>
+
+                <div class="instructions-section">
+                    <h3>Letter Rack</h3>
+                    <ul>
+                        <li>Enter your tiles (use <kbd>?</kbd> for blanks)</li>
+                        <li>Click <strong>Find Words</strong> to see all valid words</li>
+                        <li>Use filters to narrow results</li>
+                    </ul>
+                </div>
+
+                <div class="instructions-section">
+                    <h3>Quick Tips</h3>
+                    <ul>
+                        <li>Click the <strong>&#9776;</strong> button for word lists</li>
+                        <li>Click the <strong>&#127922;</strong> button for a random word</li>
+                        <li>Click any validated word to see its definition</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="instructions-footer">
+                <button id="instructions-close-btn" class="brass-button">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Button (shows instructions) -->
+    <button id="help-btn" class="help-btn" title="Show Instructions">?</button>
 
     <script type="module" src="js/main.js"></script>
 </body>

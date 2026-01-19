@@ -1461,7 +1461,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.75);
+    background: transparent;
     z-index: 3000;
     transition: opacity 0.3s ease;
 }
@@ -1475,11 +1475,13 @@ body::before {
     position: absolute;
     border-radius: 8px;
     box-shadow:
-        0 0 0 9999px rgba(0, 0, 0, 0.75),
-        0 0 20px rgba(181, 166, 66, 0.5);
-    border: 2px solid var(--brass);
+        0 0 0 9999px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(181, 166, 66, 0.8),
+        inset 0 0 20px rgba(181, 166, 66, 0.3);
+    border: 3px solid var(--brass-light);
     transition: all 0.3s ease;
     pointer-events: none;
+    background: transparent;
 }
 
 .tour-tooltip {
@@ -1651,5 +1653,160 @@ body::before {
         font-size: 1.2rem;
         bottom: 15px;
         right: 15px;
+    }
+}
+
+/* ============================================
+   INSTRUCTIONS MODAL
+   ============================================ */
+
+.instructions-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.instructions-modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.instructions-content {
+    background: linear-gradient(145deg, #2c2318, #1a1510);
+    border: 4px solid var(--brass);
+    border-radius: 16px;
+    padding: 30px 40px;
+    max-width: 550px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.9),
+        0 0 60px rgba(181, 166, 66, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.instructions-content h2 {
+    color: var(--brass-light);
+    font-family: 'Bungee', Georgia, serif;
+    font-size: 1.8rem;
+    text-align: center;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.instructions-subtitle {
+    color: var(--brass);
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 25px;
+    font-size: 1rem;
+}
+
+.instructions-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.instructions-section h3 {
+    color: var(--copper-light);
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--brass-dark);
+}
+
+.instructions-section ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.instructions-section li {
+    padding: 5px 0;
+    padding-left: 18px;
+    position: relative;
+    color: var(--parchment);
+    line-height: 1.4;
+    font-size: 0.95rem;
+}
+
+.instructions-section li::before {
+    content: '\2022';
+    color: var(--brass);
+    position: absolute;
+    left: 0;
+}
+
+.instructions-section kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--brass-dark);
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    color: var(--brass-light);
+}
+
+.instructions-section strong {
+    color: var(--brass-light);
+}
+
+.instructions-footer {
+    display: flex;
+    justify-content: center;
+    padding-top: 15px;
+    border-top: 2px solid var(--brass-dark);
+}
+
+.instructions-footer .brass-button {
+    padding: 10px 30px;
+    font-size: 1rem;
+}
+
+.instructions-content .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: var(--brass);
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.instructions-content .close-btn:hover {
+    color: var(--brass-light);
+}
+
+@media (max-width: 600px) {
+    .instructions-content {
+        padding: 25px 20px;
+    }
+
+    .instructions-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .instructions-section h3 {
+        font-size: 1rem;
+    }
+
+    .instructions-section li {
+        font-size: 0.9rem;
     }
 }
