@@ -4,6 +4,7 @@ import { Dictionary } from './dictionary.js';
 import { LetterRack } from './letterRack.js';
 import { SearchManager } from './search.js';
 import { DefinitionService } from './definitions.js';
+import { Tour } from './tour.js';
 
 /**
  * Scrabbler Main Application
@@ -108,8 +109,8 @@ class Scrabbler {
         // Set up event listeners
         this.setupEventListeners();
 
-        // Set up welcome modal
-        this.setupWelcomeModal();
+        // Set up guided tour
+        this.setupTour();
 
         // Start render loop
         this.animate();
@@ -117,50 +118,19 @@ class Scrabbler {
         console.log('Scrabbler initialized successfully!');
     }
 
-    setupWelcomeModal() {
-        this.welcomeModal = document.getElementById('welcome-modal');
-        this.welcomeStartBtn = document.getElementById('welcome-start-btn');
-        this.dontShowAgainCheckbox = document.getElementById('dont-show-again');
+    setupTour() {
+        this.tour = new Tour();
 
-        // Check if user opted out of welcome modal
-        const hideWelcome = localStorage.getItem('scrabbler-hide-welcome');
-        if (hideWelcome === 'true') {
-            this.welcomeModal.classList.add('hidden');
-            this.canvas.focus();
-            return;
+        // Start tour for first-time visitors
+        this.tour.start();
+
+        // Help button to restart tour
+        const helpBtn = document.getElementById('help-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => {
+                this.tour.forceStart();
+            });
         }
-
-        // Show modal (it's visible by default)
-        this.welcomeModal.classList.remove('hidden');
-
-        // Handle "Let's Play!" button
-        this.welcomeStartBtn.addEventListener('click', () => {
-            this.closeWelcomeModal();
-        });
-
-        // Handle clicking outside the modal content
-        this.welcomeModal.addEventListener('click', (e) => {
-            if (e.target === this.welcomeModal) {
-                this.closeWelcomeModal();
-            }
-        });
-
-        // Handle Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.welcomeModal.classList.contains('hidden')) {
-                this.closeWelcomeModal();
-            }
-        });
-    }
-
-    closeWelcomeModal() {
-        // Save preference if checkbox is checked
-        if (this.dontShowAgainCheckbox.checked) {
-            localStorage.setItem('scrabbler-hide-welcome', 'true');
-        }
-
-        this.welcomeModal.classList.add('hidden');
-        this.canvas.focus();
     }
 
     setupEventListeners() {

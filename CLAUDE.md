@@ -24,10 +24,11 @@ Scrabbler is a steampunk-styled Scrabble word validation tool. The main feature 
 │   └── styles.css          # Steampunk styling
 ├── js/
 │   ├── main.js             # App initialization, event handlers, pattern mode logic
-│   ├── letterWheel.js      # Three.js 3D letter drums + GSAP animations
+│   ├── letterWheel.js      # Three.js 3D letter drums + GSAP animations + touch controls
 │   ├── scene.js            # Three.js scene setup, lighting, camera
 │   ├── dictionary.js       # Word validation, pattern matching, anagram solving
-│   ├── letterRack.js       # 7-tile Scrabble rack component
+│   ├── letterRack.js       # 7-tile Scrabble rack component + mobile keyboard support
+│   ├── tour.js             # Guided tour system for first-time users
 │   ├── search.js           # Search utilities
 │   ├── definitions.js      # Word definition lookup service
 │   └── utils.js            # Helper functions
