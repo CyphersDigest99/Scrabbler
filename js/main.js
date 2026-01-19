@@ -108,10 +108,59 @@ class Scrabbler {
         // Set up event listeners
         this.setupEventListeners();
 
+        // Set up welcome modal
+        this.setupWelcomeModal();
+
         // Start render loop
         this.animate();
 
         console.log('Scrabbler initialized successfully!');
+    }
+
+    setupWelcomeModal() {
+        this.welcomeModal = document.getElementById('welcome-modal');
+        this.welcomeStartBtn = document.getElementById('welcome-start-btn');
+        this.dontShowAgainCheckbox = document.getElementById('dont-show-again');
+
+        // Check if user opted out of welcome modal
+        const hideWelcome = localStorage.getItem('scrabbler-hide-welcome');
+        if (hideWelcome === 'true') {
+            this.welcomeModal.classList.add('hidden');
+            this.canvas.focus();
+            return;
+        }
+
+        // Show modal (it's visible by default)
+        this.welcomeModal.classList.remove('hidden');
+
+        // Handle "Let's Play!" button
+        this.welcomeStartBtn.addEventListener('click', () => {
+            this.closeWelcomeModal();
+        });
+
+        // Handle clicking outside the modal content
+        this.welcomeModal.addEventListener('click', (e) => {
+            if (e.target === this.welcomeModal) {
+                this.closeWelcomeModal();
+            }
+        });
+
+        // Handle Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !this.welcomeModal.classList.contains('hidden')) {
+                this.closeWelcomeModal();
+            }
+        });
+    }
+
+    closeWelcomeModal() {
+        // Save preference if checkbox is checked
+        if (this.dontShowAgainCheckbox.checked) {
+            localStorage.setItem('scrabbler-hide-welcome', 'true');
+        }
+
+        this.welcomeModal.classList.add('hidden');
+        this.canvas.focus();
     }
 
     setupEventListeners() {
@@ -148,6 +197,20 @@ class Scrabbler {
         // Key up for stopping momentum cycling
         this.canvas.addEventListener('keyup', (e) => {
             this.letterWheel.handleKeyUp(e);
+        });
+
+        // Touch events for mobile swipe-to-spin
+        this.canvas.addEventListener('touchstart', (e) => {
+            this.letterWheel.handleTouchStart(e);
+            this.letterRack.setActive(-1);
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+            this.letterWheel.handleTouchMove(e);
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            this.letterWheel.handleTouchEnd(e);
         });
 
         // Auto-focus canvas on page load

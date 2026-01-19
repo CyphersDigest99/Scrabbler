@@ -47,6 +47,13 @@ export class LetterWheel {
         this.lockedSlots = new Array(this.NUM_SLOTS).fill(false);
         this.lockIndicators = [];
 
+        // Touch/swipe state for mobile
+        this.touchStartY = 0;
+        this.touchStartX = 0;
+        this.touchDrumIndex = -1;
+        this.touchAccumulatedDelta = 0;
+        this.isTouching = false;
+
         this.group = new THREE.Group();
 
         this.init();
@@ -1023,6 +1030,94 @@ export class LetterWheel {
                 this.setCursor(drumIndex);
             }
         }
+    }
+
+    // Touch handlers for mobile swipe-to-spin
+    handleTouchStart(event) {
+        if (event.touches.length !== 1) return;
+
+        const touch = event.touches[0];
+        const canvas = this.sceneManager.canvas;
+        const rect = canvas.getBoundingClientRect();
+
+        // Convert touch to normalized device coordinates
+        const mouse = new THREE.Vector2(
+            ((touch.clientX - rect.left) / rect.width) * 2 - 1,
+            -((touch.clientY - rect.top) / rect.height) * 2 + 1
+        );
+
+        // Raycast to find which drum was touched
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, this.sceneManager.camera);
+        const intersects = raycaster.intersectObjects(this.drums, true);
+
+        if (intersects.length > 0) {
+            let touchedDrum = intersects[0].object;
+            while (touchedDrum.parent && !this.drums.includes(touchedDrum)) {
+                touchedDrum = touchedDrum.parent;
+            }
+
+            const drumIndex = this.drums.indexOf(touchedDrum);
+            if (drumIndex !== -1) {
+                this.isTouching = true;
+                this.touchDrumIndex = drumIndex;
+                this.touchStartY = touch.clientY;
+                this.touchStartX = touch.clientX;
+                this.touchAccumulatedDelta = 0;
+
+                // Set cursor to this drum
+                this.setCursor(drumIndex);
+
+                event.preventDefault();
+            }
+        }
+    }
+
+    handleTouchMove(event) {
+        if (!this.isTouching || this.touchDrumIndex === -1) return;
+        if (event.touches.length !== 1) return;
+
+        event.preventDefault();
+
+        const touch = event.touches[0];
+        const deltaY = this.touchStartY - touch.clientY; // Positive = swipe up
+
+        // Accumulate the delta
+        this.touchAccumulatedDelta += deltaY;
+
+        // Threshold for triggering a letter change (in pixels)
+        const threshold = 30;
+
+        if (Math.abs(this.touchAccumulatedDelta) >= threshold) {
+            const direction = this.touchAccumulatedDelta > 0 ? 1 : -1;
+            const steps = Math.floor(Math.abs(this.touchAccumulatedDelta) / threshold);
+
+            // Ensure cursor is at the touched drum
+            if (this.cursorPosition !== this.touchDrumIndex) {
+                this.setCursor(this.touchDrumIndex);
+            }
+
+            for (let i = 0; i < steps; i++) {
+                this.cycleLetter(direction, 1);
+            }
+
+            // Keep remainder for smooth continuous scrolling
+            this.touchAccumulatedDelta = this.touchAccumulatedDelta % threshold;
+        }
+
+        // Update start position for continuous tracking
+        this.touchStartY = touch.clientY;
+    }
+
+    handleTouchEnd(event) {
+        if (!this.isTouching) return;
+
+        this.isTouching = false;
+        this.touchDrumIndex = -1;
+        this.touchAccumulatedDelta = 0;
+
+        // Trigger validation after touch ends
+        this.triggerRealtimeValidation();
     }
 
     getCurrentWord() {

@@ -45,6 +45,20 @@ export class SceneManager {
 
         // Handle window resize
         window.addEventListener('resize', () => this.onResize());
+
+        // Handle orientation change (mobile)
+        window.addEventListener('orientationchange', () => {
+            // Delay to let the browser finish orientation change
+            setTimeout(() => this.onResize(), 100);
+        });
+
+        // ResizeObserver for reliable canvas size detection
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.onResize();
+            });
+            this.resizeObserver.observe(this.canvas);
+        }
     }
 
     setupLighting() {
@@ -125,10 +139,14 @@ export class SceneManager {
         const width = this.canvas.clientWidth;
         const height = this.canvas.clientHeight;
 
+        // Prevent issues with 0 dimensions during transitions
+        if (width === 0 || height === 0) return;
+
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
 
-        this.renderer.setSize(width, height);
+        this.renderer.setSize(width, height, false);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     }
 
     render() {

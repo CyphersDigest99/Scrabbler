@@ -180,6 +180,53 @@
         </div>
     </div>
 
+    <!-- Welcome Modal -->
+    <div id="welcome-modal" class="welcome-modal">
+        <div class="welcome-content">
+            <h2>Welcome to Scrabbler</h2>
+            <p class="welcome-subtitle">Your steampunk Scrabble word validator</p>
+
+            <div class="welcome-sections">
+                <div class="welcome-section">
+                    <h3>Letter Wheel</h3>
+                    <ul>
+                        <li><kbd>Type</kbd> letters to spin the drums</li>
+                        <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move cursor between slots</li>
+                        <li><kbd>&uarr;</kbd> <kbd>&darr;</kbd> cycle through letters</li>
+                        <li><kbd>Enter</kbd> validate your word</li>
+                        <li><kbd>Backspace</kbd> clear current slot</li>
+                    </ul>
+                </div>
+
+                <div class="welcome-section">
+                    <h3>Letter Rack</h3>
+                    <ul>
+                        <li>Enter your tiles (use <kbd>?</kbd> for blanks)</li>
+                        <li>Click <strong>Find Words</strong> to see all valid words</li>
+                        <li>Use filters to narrow results</li>
+                    </ul>
+                </div>
+
+                <div class="welcome-section">
+                    <h3>Quick Tips</h3>
+                    <ul>
+                        <li>Click the <strong>&#9776;</strong> button for word lists</li>
+                        <li>Click the <strong>&#127922;</strong> button for a random word</li>
+                        <li>Click any validated word to see its definition</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="welcome-footer">
+                <label class="dont-show-again">
+                    <input type="checkbox" id="dont-show-again">
+                    <span>Don't show this again</span>
+                </label>
+                <button id="welcome-start-btn" class="brass-button">Let's Play!</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
