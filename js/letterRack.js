@@ -20,6 +20,7 @@ export class LetterRack {
 
     init() {
         this.createTiles();
+        this.createHiddenInput();
         this.setupEventListeners();
     }
 
@@ -40,6 +41,18 @@ export class LetterRack {
         }
     }
 
+    createHiddenInput() {
+        // Hidden input to trigger mobile keyboard
+        this.hiddenInput = document.createElement('input');
+        this.hiddenInput.type = 'text';
+        this.hiddenInput.className = 'rack-hidden-input';
+        this.hiddenInput.setAttribute('autocomplete', 'off');
+        this.hiddenInput.setAttribute('autocorrect', 'off');
+        this.hiddenInput.setAttribute('autocapitalize', 'characters');
+        this.hiddenInput.setAttribute('spellcheck', 'false');
+        this.container.parentElement.appendChild(this.hiddenInput);
+    }
+
     setupEventListeners() {
         // Click on tiles
         this.tiles.forEach((tile, index) => {
@@ -48,6 +61,37 @@ export class LetterRack {
 
         // Global keyboard listener for rack (when a tile is active)
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
+        // Hidden input listener for mobile keyboard
+        this.hiddenInput.addEventListener('input', (e) => this.handleHiddenInput(e));
+        this.hiddenInput.addEventListener('blur', () => {
+            // Small delay to allow tile clicks to register
+            setTimeout(() => {
+                if (document.activeElement !== this.hiddenInput) {
+                    // Keep visual active state but don't clear it immediately
+                }
+            }, 100);
+        });
+    }
+
+    handleHiddenInput(event) {
+        if (this.activeIndex === -1) return;
+
+        const value = event.target.value;
+        if (value.length > 0) {
+            const lastChar = value.slice(-1);
+            if (/^[a-zA-Z?]$/.test(lastChar)) {
+                const letter = lastChar === '?' ? '?' : lastChar.toUpperCase();
+                this.setLetter(this.activeIndex, letter);
+
+                // Auto-advance
+                if (this.activeIndex < this.NUM_TILES - 1) {
+                    this.setActive(this.activeIndex + 1);
+                }
+            }
+            // Clear the input for next character
+            this.hiddenInput.value = '';
+        }
     }
 
     setActive(index) {
@@ -57,8 +101,13 @@ export class LetterRack {
         if (index >= 0 && index < this.NUM_TILES) {
             this.activeIndex = index;
             this.tiles[index].classList.add('active');
+
+            // Focus hidden input to trigger mobile keyboard
+            this.hiddenInput.value = '';
+            this.hiddenInput.focus();
         } else {
             this.activeIndex = -1;
+            this.hiddenInput.blur();
         }
     }
 

@@ -1034,7 +1034,6 @@ export class LetterWheel {
 
     // Touch handlers for mobile swipe-to-spin
     handleTouchStart(event) {
-        console.log('Touch start detected'); // Debug
         if (event.touches.length !== 1) return;
 
         const touch = event.touches[0];
@@ -1052,8 +1051,6 @@ export class LetterWheel {
         raycaster.setFromCamera(mouse, this.sceneManager.camera);
         const intersects = raycaster.intersectObjects(this.drums, true);
 
-        console.log('Raycast intersects:', intersects.length); // Debug
-
         if (intersects.length > 0) {
             let touchedDrum = intersects[0].object;
             while (touchedDrum.parent && !this.drums.includes(touchedDrum)) {
@@ -1061,7 +1058,6 @@ export class LetterWheel {
             }
 
             const drumIndex = this.drums.indexOf(touchedDrum);
-            console.log('Drum index:', drumIndex); // Debug
             if (drumIndex !== -1) {
                 this.isTouching = true;
                 this.touchDrumIndex = drumIndex;

@@ -1573,3 +1573,14 @@ body::before {
     padding: 12px 30px;
     font-size: 1.1rem;
 }
+
+/* Hidden input for mobile keyboard on letter rack */
+.rack-hidden-input {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+}
