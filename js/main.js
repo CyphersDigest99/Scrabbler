@@ -350,6 +350,8 @@ class Scrabbler {
             }
             this.clearRealtimeValidation();
             this.hideValidation();
+            // Focus canvas to allow typing
+            this.canvas.focus();
         });
 
         this.randomWordBtn.addEventListener('click', () => {

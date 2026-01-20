@@ -64,6 +64,33 @@ export class LetterRack {
 
         // Hidden input listener for mobile keyboard
         this.hiddenInput.addEventListener('input', (e) => this.handleHiddenInput(e));
+
+        // Handle backspace/delete on hidden input (doesn't trigger 'input' event)
+        this.hiddenInput.addEventListener('keydown', (e) => {
+            if (this.activeIndex === -1) return;
+
+            if (e.key === 'Backspace') {
+                e.preventDefault();
+                this.clearTile(this.activeIndex);
+                if (this.activeIndex > 0) {
+                    this.setActive(this.activeIndex - 1);
+                }
+            } else if (e.key === 'Delete') {
+                e.preventDefault();
+                this.clearTile(this.activeIndex);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (this.activeIndex > 0) {
+                    this.setActive(this.activeIndex - 1);
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (this.activeIndex < this.NUM_TILES - 1) {
+                    this.setActive(this.activeIndex + 1);
+                }
+            }
+        });
+
         this.hiddenInput.addEventListener('blur', () => {
             // Small delay to allow tile clicks to register
             setTimeout(() => {
