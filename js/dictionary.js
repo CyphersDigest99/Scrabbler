@@ -23,11 +23,10 @@ export class Dictionary {
             }
 
             const text = await response.text();
-            const wordList = text.split(/\r?\n/)
-                .map(word => word.trim().toUpperCase())
-                .filter(word => word.length > 0);
 
-            this.words = new Set(wordList);
+            // Process in chunks to avoid blocking UI on mobile
+            await this.processWordsInChunks(text);
+
             this.loaded = true;
             console.log(`Dictionary loaded: ${this.words.size} words`);
         } catch (error) {
@@ -35,6 +34,27 @@ export class Dictionary {
             throw error;
         } finally {
             this.loading = false;
+        }
+    }
+
+    async processWordsInChunks(text) {
+        const lines = text.split(/\r?\n/);
+        const chunkSize = 10000; // Process 10k words at a time
+
+        for (let i = 0; i < lines.length; i += chunkSize) {
+            const chunk = lines.slice(i, i + chunkSize);
+
+            for (const line of chunk) {
+                const word = line.trim().toUpperCase();
+                if (word.length > 0) {
+                    this.words.add(word);
+                }
+            }
+
+            // Yield to browser to prevent iOS from killing the page
+            if (i + chunkSize < lines.length) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
         }
     }
 

@@ -15,6 +15,9 @@
     <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
+    <!-- ES Module Shims for iOS Safari compatibility -->
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+
     <!-- Three.js Import Map -->
     <script type="importmap">
     {
@@ -227,6 +230,17 @@
 
     <!-- Help Button (shows instructions) -->
     <button id="help-btn" class="help-btn" title="Show Instructions">?</button>
+
+    <!-- Global error handler for iOS Safari -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('Global error:', msg, url, line);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+    </script>
 
     <script type="module" src="js/main.js"></script>
 </body>
