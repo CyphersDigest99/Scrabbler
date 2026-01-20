@@ -11,53 +11,103 @@ export class SceneManager {
         this.camera = null;
         this.renderer = null;
         this.envMap = null;
+        this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.webGLAvailable = this.checkWebGL();
+
+        if (!this.webGLAvailable) {
+            this.showFallback();
+            return;
+        }
 
         this.init();
     }
 
+    checkWebGL() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            return !!(gl && gl instanceof WebGLRenderingContext);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    showFallback() {
+        // Show a message if WebGL isn't available
+        const container = this.canvas.parentElement;
+        const fallback = document.createElement('div');
+        fallback.className = 'webgl-fallback';
+        fallback.innerHTML = `
+            <p>Your browser doesn't support WebGL.</p>
+            <p>Please try a different browser or device.</p>
+        `;
+        fallback.style.cssText = 'display:flex;align-items:center;justify-content:center;flex-direction:column;height:200px;color:#b5a642;text-align:center;';
+        container.appendChild(fallback);
+        this.canvas.style.display = 'none';
+    }
+
     init() {
-        // Create scene with transparent background
-        this.scene = new THREE.Scene();
-        this.scene.background = null;
+        try {
+            // Create scene with transparent background
+            this.scene = new THREE.Scene();
+            this.scene.background = null;
 
-        // Set up camera - positioned to view horizontal drums through window
-        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-        this.camera.position.set(0, 0, 13);
-        this.camera.lookAt(0, 0, 0);
+            // Set up camera - positioned to view horizontal drums through window
+            const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+            this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+            this.camera.position.set(0, 0, 13);
+            this.camera.lookAt(0, 0, 0);
 
-        // Set up renderer
-        this.renderer = new THREE.WebGLRenderer({
-            canvas: this.canvas,
-            antialias: true,
-            alpha: true
-        });
-        this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
+            // Set up renderer with iOS-safe options
+            const rendererOptions = {
+                canvas: this.canvas,
+                alpha: true,
+                antialias: !this.isMobile, // Disable antialiasing on mobile for performance
+                powerPreference: this.isMobile ? 'low-power' : 'high-performance',
+                failIfMajorPerformanceCaveat: false
+            };
 
-        // Set up lighting for metallic surfaces
-        this.setupLighting();
+            this.renderer = new THREE.WebGLRenderer(rendererOptions);
+            this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
 
-        // Create environment map for reflections
-        this.createEnvMap();
+            // Lower pixel ratio for iOS to prevent memory issues
+            const maxPixelRatio = this.isIOS ? 1.5 : (this.isMobile ? 1.5 : 2);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
 
-        // Handle window resize
-        window.addEventListener('resize', () => this.onResize());
+            // Simpler tone mapping for mobile
+            if (!this.isMobile) {
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+            }
 
-        // Handle orientation change (mobile)
-        window.addEventListener('orientationchange', () => {
-            // Delay to let the browser finish orientation change
-            setTimeout(() => this.onResize(), 100);
-        });
+            // Set up lighting for metallic surfaces
+            this.setupLighting();
 
-        // ResizeObserver for reliable canvas size detection
-        if (typeof ResizeObserver !== 'undefined') {
-            this.resizeObserver = new ResizeObserver(() => {
-                this.onResize();
+            // Create environment map for reflections (skip on iOS to prevent crashes)
+            if (!this.isIOS) {
+                this.createEnvMap();
+            }
+
+            // Handle window resize
+            window.addEventListener('resize', () => this.onResize());
+
+            // Handle orientation change (mobile)
+            window.addEventListener('orientationchange', () => {
+                // Delay to let the browser finish orientation change
+                setTimeout(() => this.onResize(), 150);
             });
-            this.resizeObserver.observe(this.canvas);
+
+            // ResizeObserver for reliable canvas size detection
+            if (typeof ResizeObserver !== 'undefined') {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this.onResize();
+                });
+                this.resizeObserver.observe(this.canvas);
+            }
+        } catch (error) {
+            console.error('Failed to initialize WebGL:', error);
+            this.showFallback();
         }
     }
 

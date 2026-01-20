@@ -82,21 +82,34 @@ class Scrabbler {
             console.warn('Font loading warning:', e);
         }
 
-        // Initialize Three.js scene
-        this.sceneManager = new SceneManager(this.canvas);
+        // Initialize Three.js scene with error handling
+        try {
+            this.sceneManager = new SceneManager(this.canvas);
 
-        // Initialize letter wheel
-        this.letterWheel = new LetterWheel(
-            this.sceneManager,
-            (word) => this.handleValidation(word)
-        );
+            // Check if WebGL initialized successfully
+            if (!this.sceneManager.webGLAvailable || !this.sceneManager.renderer) {
+                console.warn('WebGL not available, running in limited mode');
+                this.webGLEnabled = false;
+            } else {
+                this.webGLEnabled = true;
 
-        // Set up real-time validation callback
-        this.letterWheel.setRealtimeValidationCallback(
-            (word) => this.handleRealtimeValidation(word)
-        );
+                // Initialize letter wheel
+                this.letterWheel = new LetterWheel(
+                    this.sceneManager,
+                    (word) => this.handleValidation(word)
+                );
 
-        // Initialize letter rack
+                // Set up real-time validation callback
+                this.letterWheel.setRealtimeValidationCallback(
+                    (word) => this.handleRealtimeValidation(word)
+                );
+            }
+        } catch (error) {
+            console.error('Failed to initialize 3D graphics:', error);
+            this.webGLEnabled = false;
+        }
+
+        // Initialize letter rack (works without WebGL)
         this.letterRack = new LetterRack(
             this.rackContainer,
             this.dictionary,
@@ -112,8 +125,10 @@ class Scrabbler {
         // Set up guided tour
         this.setupTour();
 
-        // Start render loop
-        this.animate();
+        // Start render loop only if WebGL is enabled
+        if (this.webGLEnabled) {
+            this.animate();
+        }
 
         console.log('Scrabbler initialized successfully!');
     }
@@ -176,57 +191,60 @@ class Scrabbler {
     }
 
     setupEventListeners() {
-        // Canvas click for drum selection
-        this.canvas.addEventListener('click', (e) => {
-            this.letterWheel.handleClick(e);
-            // Focus canvas for keyboard input
-            this.canvas.focus();
-            // Deactivate letter rack
-            this.letterRack.setActive(-1);
-        });
+        // Only set up letter wheel events if WebGL is enabled
+        if (this.webGLEnabled && this.letterWheel) {
+            // Canvas click for drum selection
+            this.canvas.addEventListener('click', (e) => {
+                this.letterWheel.handleClick(e);
+                // Focus canvas for keyboard input
+                this.canvas.focus();
+                // Deactivate letter rack
+                this.letterRack.setActive(-1);
+            });
 
-        // Make canvas focusable
-        this.canvas.tabIndex = 0;
+            // Make canvas focusable
+            this.canvas.tabIndex = 0;
 
-        // Keyboard input for letter wheel
-        this.canvas.addEventListener('keydown', (e) => {
-            // In pattern mode with matches, intercept Up/Down for cycling
-            if (this.patternMode && this.patternMatches.length > 0) {
-                if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    this.cyclePatternMatch(-1);
-                    return;
-                } else if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    this.cyclePatternMatch(1);
-                    return;
+            // Keyboard input for letter wheel
+            this.canvas.addEventListener('keydown', (e) => {
+                // In pattern mode with matches, intercept Up/Down for cycling
+                if (this.patternMode && this.patternMatches.length > 0) {
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.cyclePatternMatch(-1);
+                        return;
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        this.cyclePatternMatch(1);
+                        return;
+                    }
                 }
-            }
 
-            this.letterWheel.handleKeyDown(e);
-        });
+                this.letterWheel.handleKeyDown(e);
+            });
 
-        // Key up for stopping momentum cycling
-        this.canvas.addEventListener('keyup', (e) => {
-            this.letterWheel.handleKeyUp(e);
-        });
+            // Key up for stopping momentum cycling
+            this.canvas.addEventListener('keyup', (e) => {
+                this.letterWheel.handleKeyUp(e);
+            });
 
-        // Touch events for mobile swipe-to-spin
-        this.canvas.addEventListener('touchstart', (e) => {
-            this.letterWheel.handleTouchStart(e);
-            this.letterRack.setActive(-1);
-        }, { passive: false });
+            // Touch events for mobile swipe-to-spin
+            this.canvas.addEventListener('touchstart', (e) => {
+                this.letterWheel.handleTouchStart(e);
+                this.letterRack.setActive(-1);
+            }, { passive: false });
 
-        this.canvas.addEventListener('touchmove', (e) => {
-            this.letterWheel.handleTouchMove(e);
-        }, { passive: false });
+            this.canvas.addEventListener('touchmove', (e) => {
+                this.letterWheel.handleTouchMove(e);
+            }, { passive: false });
 
-        this.canvas.addEventListener('touchend', (e) => {
-            this.letterWheel.handleTouchEnd(e);
-        });
+            this.canvas.addEventListener('touchend', (e) => {
+                this.letterWheel.handleTouchEnd(e);
+            });
 
-        // Auto-focus canvas on page load
-        this.canvas.focus();
+            // Auto-focus canvas on page load
+            this.canvas.focus();
+        }
 
         // Filter inputs
         this.startsWithInput = document.getElementById('starts-with');
