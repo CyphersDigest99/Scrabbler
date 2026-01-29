@@ -26,8 +26,10 @@ body {
     font-family: 'Georgia', 'Times New Roman', serif;
     background: linear-gradient(135deg, #1a1510 0%, #2c2318 50%, #1a1510 100%);
     min-height: 100vh;
+    min-height: 100dvh;
     color: var(--parchment);
     overflow-x: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* Background texture overlay */
@@ -898,7 +900,7 @@ body::before {
 @media (max-width: 960px) {
     #letter-wheel-canvas {
         width: 100%;
-        height: 150px;
+        height: 200px;
     }
 
     .steampunk-header h1 {
@@ -918,22 +920,297 @@ body::before {
 }
 
 @media (max-width: 600px) {
+    .app-container {
+        padding: 8px 10px;
+    }
+
+    .steampunk-header {
+        padding: 6px 10px;
+        margin-bottom: 6px;
+    }
+
+    .steampunk-header h1 .tile-letter {
+        width: 32px;
+        height: 32px;
+        font-size: 1.2rem;
+    }
+
+    .steampunk-header h1 .tile-letter .points {
+        font-size: 0.4rem;
+    }
+
+    .steampunk-header h1 {
+        gap: 3px;
+    }
+
+    #letter-wheel-canvas {
+        height: 180px;
+    }
+
     .tile {
-        width: 45px;
-        height: 45px;
+        width: 44px;
+        height: 44px;
     }
 
     .tile-letter {
         font-size: 1.4rem;
     }
 
-    .instructions {
-        font-size: 0.75rem;
+    .rack-tiles {
+        gap: 5px;
     }
 
-    .instructions kbd {
-        padding: 2px 5px;
-        font-size: 0.7rem;
+    .wooden-rack {
+        padding: 12px 15px;
+    }
+
+    .instructions {
+        display: none;
+    }
+
+    .wheel-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.3rem;
+        bottom: -52px;
+    }
+
+    .clear-wheel-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .brass-button {
+        padding: 14px 24px;
+        font-size: 1rem;
+        min-height: 48px;
+    }
+
+    .category-btn {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+
+    .filter-group input {
+        min-height: 44px;
+        font-size: 16px; /* Prevents iOS zoom */
+    }
+
+    .word-lists-content {
+        padding: 20px 15px;
+        width: 95%;
+    }
+
+    .word-lists-search {
+        margin: 0 -15px -20px -15px;
+        padding: 12px 15px;
+    }
+
+    .word-lists-search input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .filter-nav-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+    }
+
+    .slot-lock {
+        height: 36px;
+    }
+
+    .slot-lock-slider {
+        width: 32px;
+        height: 18px;
+        border-radius: 9px;
+    }
+
+    .slot-lock-slider::before {
+        width: 12px;
+        height: 12px;
+        top: 1px;
+        left: 2px;
+    }
+
+    .slot-lock input:checked + .slot-lock-slider::before {
+        transform: translateX(14px);
+    }
+
+    .slot-locks {
+        bottom: 40px;
+        height: 36px;
+    }
+
+    .pattern-lock-container {
+        top: 5px;
+    }
+
+    .toggle-slider {
+        width: 48px;
+        height: 28px;
+        border-radius: 14px;
+    }
+
+    .toggle-slider::before {
+        width: 22px;
+        height: 22px;
+        top: 1px;
+    }
+
+    .pattern-lock-toggle input:checked + .toggle-slider::before {
+        transform: translateX(20px);
+    }
+
+    .validation-plate {
+        padding: 14px 25px;
+        font-size: 1.2rem;
+    }
+
+    .realtime-indicator {
+        font-size: 0.85rem;
+        padding: 8px 20px;
+    }
+
+    .definition-content {
+        padding: 20px 20px;
+        width: 95%;
+    }
+
+    .help-btn {
+        width: 44px;
+        height: 44px;
+        bottom: 15px;
+        right: 15px;
+    }
+
+    .close-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .letter-rack-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 3px;
+    }
+
+    .rack-hint {
+        font-size: 0.75rem;
+        margin-bottom: 10px;
+    }
+
+    .rack-filters {
+        gap: 8px;
+        margin: 10px auto;
+    }
+
+    .rack-controls {
+        margin-top: 12px;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .steampunk-header h1 .tile-letter {
+        width: 28px;
+        height: 28px;
+        font-size: 1rem;
+    }
+
+    .steampunk-header h1 .tile-letter .points {
+        display: none;
+    }
+
+    #letter-wheel-canvas {
+        height: 160px;
+    }
+
+    .tile {
+        width: 40px;
+        height: 40px;
+    }
+
+    .tile-letter {
+        font-size: 1.2rem;
+    }
+
+    .tile-points {
+        font-size: 0.55rem;
+    }
+
+    .rack-filters {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .filter-group input {
+        width: 160px;
+    }
+}
+
+@media (max-width: 360px) {
+    .steampunk-header h1 .tile-letter {
+        width: 24px;
+        height: 24px;
+        font-size: 0.85rem;
+    }
+
+    #letter-wheel-canvas {
+        height: 140px;
+    }
+
+    .tile {
+        width: 36px;
+        height: 36px;
+    }
+
+    .tile-letter {
+        font-size: 1rem;
+    }
+
+    .wooden-rack {
+        padding: 10px 10px;
+    }
+
+    .rack-tiles {
+        gap: 3px;
+    }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .steampunk-header {
+        padding: 4px 10px;
+        margin-bottom: 4px;
+    }
+
+    .steampunk-header h1 .tile-letter {
+        width: 28px;
+        height: 28px;
+        font-size: 1rem;
+    }
+
+    #letter-wheel-canvas {
+        height: 120px;
+    }
+
+    .letter-rack-section h2 {
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+
+    .rack-hint {
+        display: none;
+    }
+
+    .letter-wheel-section {
+        margin-bottom: 2px;
     }
 }
 

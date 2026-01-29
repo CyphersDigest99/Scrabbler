@@ -435,6 +435,15 @@ class Scrabbler {
         this.patternLockToggle.addEventListener('change', () => {
             this.togglePatternMode(this.patternLockToggle.checked);
         });
+
+        // Orientation change triggers canvas resize
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (this.sceneManager) {
+                    this.sceneManager.onResize();
+                }
+            }, 200);
+        });
     }
 
     openWordListsModal() {
