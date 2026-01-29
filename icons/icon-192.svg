@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2c2318"/>
+      <stop offset="100%" stop-color="#1a1510"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#f5f0e6"/>
+      <stop offset="100%" stop-color="#e8e0d0"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d4c575"/>
+      <stop offset="100%" stop-color="#8b7d3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="24" fill="url(#bg)"/>
+  <rect x="16" y="16" width="160" height="160" rx="12" fill="none" stroke="url(#brass)" stroke-width="4"/>
+  <!-- S tile -->
+  <rect x="32" y="56" width="56" height="56" rx="4" fill="url(#tile)"/>
+  <text x="60" y="98" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-weight="bold" fill="#1a1008">S</text>
+  <text x="78" y="106" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#1a1008">1</text>
+  <!-- W tile -->
+  <rect x="104" y="56" width="56" height="56" rx="4" fill="url(#tile)"/>
+  <text x="132" y="98" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-weight="bold" fill="#1a1008">W</text>
+  <text x="150" y="106" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#1a1008">4</text>
+  <!-- Gear accent -->
+  <circle cx="96" cy="148" r="16" fill="none" stroke="url(#brass)" stroke-width="3"/>
+  <circle cx="96" cy="148" r="6" fill="#8b7d3a"/>
+</svg>

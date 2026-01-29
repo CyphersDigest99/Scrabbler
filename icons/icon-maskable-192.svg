@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2c2318"/>
+      <stop offset="100%" stop-color="#1a1510"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#f5f0e6"/>
+      <stop offset="100%" stop-color="#e8e0d0"/>
+    </linearGradient>
+  </defs>
+  <!-- Full bleed background for maskable -->
+  <rect width="192" height="192" fill="url(#bg)"/>
+  <!-- Content in safe zone (centered, ~80% of icon) -->
+  <rect x="48" y="60" width="42" height="42" rx="3" fill="url(#tile)"/>
+  <text x="69" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="bold" fill="#1a1008">S</text>
+  <rect x="102" y="60" width="42" height="42" rx="3" fill="url(#tile)"/>
+  <text x="123" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="bold" fill="#1a1008">W</text>
+  <circle cx="96" cy="126" r="12" fill="none" stroke="#8b7d3a" stroke-width="2"/>
+  <circle cx="96" cy="126" r="4" fill="#8b7d3a"/>
+</svg>
