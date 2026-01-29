@@ -6,10 +6,13 @@
     "start_url": ".",
     "scope": ".",
     "display": "standalone",
+    "display_override": ["standalone", "window-controls-overlay"],
     "orientation": "portrait",
+    "lang": "en",
     "theme_color": "#1a1510",
     "background_color": "#1a1510",
     "prefer_related_applications": false,
+    "iarc_rating_id": "",
     "icons": [
         {
             "src": "icons/icon-192.png",
@@ -34,6 +37,14 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "label": "Scrabbler word wheel"
         }
     ],
     "categories": ["games", "utilities"]
