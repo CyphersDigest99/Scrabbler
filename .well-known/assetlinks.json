@@ -1,12 +1,8 @@
-[
-    {
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {
-            "namespace": "android_app",
-            "package_name": "com.cyphersdigest.scrabbler",
-            "sha256_cert_fingerprints": [
-                "TODO:REPLACE_WITH_YOUR_SIGNING_KEY_SHA256_FINGERPRINT"
-            ]
-        }
-    }
-]
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.cyphersdigest99.twa",
+        "sha256_cert_fingerprints": ["12:3D:8E:BE:29:C8:3F:5B:60:30:A0:42:12:51:72:8D:B4:6D:7D:5C:CC:7A:0E:D1:08:A6:76:4D:12:C3:38:D6"]
+      }
+    }]
