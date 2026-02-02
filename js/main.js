@@ -193,21 +193,72 @@ class Scrabbler {
     setupEventListeners() {
         // Only set up letter wheel events if WebGL is enabled
         if (this.webGLEnabled && this.letterWheel) {
+            // Create hidden input for mobile keyboard support
+            this.wheelHiddenInput = document.createElement('input');
+            this.wheelHiddenInput.type = 'text';
+            this.wheelHiddenInput.className = 'wheel-hidden-input';
+            this.wheelHiddenInput.setAttribute('autocomplete', 'off');
+            this.wheelHiddenInput.setAttribute('autocorrect', 'off');
+            this.wheelHiddenInput.setAttribute('autocapitalize', 'characters');
+            this.wheelHiddenInput.setAttribute('spellcheck', 'false');
+            this.wheelHiddenInput.setAttribute('enterkeyhint', 'go');
+            this.wheelHiddenInput.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
+            this.canvas.parentElement.appendChild(this.wheelHiddenInput);
+
+            // Handle text input from mobile keyboard
+            this.wheelHiddenInput.addEventListener('input', (e) => {
+                const value = e.target.value;
+                if (value.length > 0) {
+                    const lastChar = value.slice(-1);
+                    if (/^[a-zA-Z]$/.test(lastChar)) {
+                        this.letterWheel.spinToLetter(this.letterWheel.cursorPosition, lastChar.toUpperCase(), true);
+                        if (this.letterWheel.cursorPosition < this.letterWheel.NUM_SLOTS - 1) {
+                            this.letterWheel.moveCursor(1);
+                        }
+                    }
+                    this.wheelHiddenInput.value = '';
+                }
+            });
+
+            // Handle special keys from mobile keyboard
+            this.wheelHiddenInput.addEventListener('keydown', (e) => {
+                // In pattern mode with matches, intercept Up/Down for cycling
+                if (this.patternMode && this.patternMatches.length > 0) {
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.cyclePatternMatch(-1);
+                        return;
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        this.cyclePatternMatch(1);
+                        return;
+                    }
+                }
+
+                this.letterWheel.handleKeyDown(e);
+            });
+
+            this.wheelHiddenInput.addEventListener('keyup', (e) => {
+                this.letterWheel.handleKeyUp(e);
+            });
+
+            const focusWheelInput = () => {
+                this.letterRack.setActive(-1);
+                this.wheelHiddenInput.value = '';
+                this.wheelHiddenInput.focus();
+            };
+
             // Canvas click for drum selection
             this.canvas.addEventListener('click', (e) => {
                 this.letterWheel.handleClick(e);
-                // Focus canvas for keyboard input
-                this.canvas.focus();
-                // Deactivate letter rack
-                this.letterRack.setActive(-1);
+                focusWheelInput();
             });
 
-            // Make canvas focusable
+            // Make canvas focusable (fallback for desktop)
             this.canvas.tabIndex = 0;
 
-            // Keyboard input for letter wheel
+            // Keyboard input for letter wheel (desktop fallback via canvas)
             this.canvas.addEventListener('keydown', (e) => {
-                // In pattern mode with matches, intercept Up/Down for cycling
                 if (this.patternMode && this.patternMatches.length > 0) {
                     if (e.key === 'ArrowUp') {
                         e.preventDefault();
@@ -231,7 +282,7 @@ class Scrabbler {
             // Touch events for mobile swipe-to-spin
             this.canvas.addEventListener('touchstart', (e) => {
                 this.letterWheel.handleTouchStart(e);
-                this.letterRack.setActive(-1);
+                focusWheelInput();
             }, { passive: false });
 
             this.canvas.addEventListener('touchmove', (e) => {
@@ -242,8 +293,8 @@ class Scrabbler {
                 this.letterWheel.handleTouchEnd(e);
             });
 
-            // Auto-focus canvas on page load
-            this.canvas.focus();
+            // Auto-focus on page load
+            this.wheelHiddenInput.focus();
         }
 
         // Filter inputs
