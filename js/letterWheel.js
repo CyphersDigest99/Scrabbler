@@ -54,6 +54,13 @@ export class LetterWheel {
         this.touchAccumulatedDelta = 0;
         this.isTouching = false;
 
+        // Momentum/velocity tracking for swipe
+        this.touchVelocity = 0;
+        this.touchPrevY = 0;
+        this.touchPrevTime = 0;
+        this.momentumAnimation = null;
+        this.velocityHistory = []; // Track recent velocities for smoothing
+
         this.group = new THREE.Group();
 
         this.init();
@@ -1059,11 +1066,20 @@ export class LetterWheel {
 
             const drumIndex = this.drums.indexOf(touchedDrum);
             if (drumIndex !== -1) {
+                // Cancel any existing momentum animation
+                this.stopMomentum();
+
                 this.isTouching = true;
                 this.touchDrumIndex = drumIndex;
                 this.touchStartY = touch.clientY;
                 this.touchStartX = touch.clientX;
                 this.touchAccumulatedDelta = 0;
+
+                // Initialize velocity tracking
+                this.touchPrevY = touch.clientY;
+                this.touchPrevTime = performance.now();
+                this.touchVelocity = 0;
+                this.velocityHistory = [];
 
                 // Set cursor to this drum
                 this.setCursor(drumIndex);
@@ -1080,7 +1096,34 @@ export class LetterWheel {
         event.preventDefault();
 
         const touch = event.touches[0];
+        const now = performance.now();
         const deltaY = this.touchStartY - touch.clientY; // Positive = swipe up
+        const deltaTime = now - this.touchPrevTime;
+
+        // Calculate instantaneous velocity (pixels per ms)
+        if (deltaTime > 0) {
+            const instantVelocity = (this.touchPrevY - touch.clientY) / deltaTime;
+
+            // Add to velocity history for smoothing (keep last 5 samples)
+            this.velocityHistory.push(instantVelocity);
+            if (this.velocityHistory.length > 5) {
+                this.velocityHistory.shift();
+            }
+
+            // Smoothed velocity is weighted average (more recent = higher weight)
+            let weightedSum = 0;
+            let weightSum = 0;
+            this.velocityHistory.forEach((v, i) => {
+                const weight = i + 1;
+                weightedSum += v * weight;
+                weightSum += weight;
+            });
+            this.touchVelocity = weightedSum / weightSum;
+        }
+
+        // Update tracking for next frame
+        this.touchPrevY = touch.clientY;
+        this.touchPrevTime = now;
 
         // Accumulate the delta
         this.touchAccumulatedDelta += deltaY;
@@ -1112,12 +1155,201 @@ export class LetterWheel {
     handleTouchEnd(event) {
         if (!this.isTouching) return;
 
+        const drumIndex = this.touchDrumIndex;
+        const velocity = this.touchVelocity;
+
         this.isTouching = false;
         this.touchDrumIndex = -1;
         this.touchAccumulatedDelta = 0;
 
-        // Trigger validation after touch ends
-        this.triggerRealtimeValidation();
+        // Check if we have enough velocity for momentum
+        const minVelocityThreshold = 0.3; // pixels per ms
+        if (Math.abs(velocity) > minVelocityThreshold && drumIndex !== -1) {
+            this.startMomentum(drumIndex, velocity);
+        } else {
+            // Snap to nearest letter and validate
+            this.snapToPosition(this.cursorPosition);
+            this.triggerRealtimeValidation();
+        }
+    }
+
+    /**
+     * Start momentum-based spinning after a fast swipe
+     * @param {number} drumIndex - Which drum to spin
+     * @param {number} velocity - Initial velocity in pixels/ms
+     */
+    startMomentum(drumIndex, velocity) {
+        const drum = this.drums[drumIndex];
+        const letterGroup = drum.userData.letterGroup;
+        if (!letterGroup) return;
+
+        // Cancel any existing animation
+        this.stopMomentum();
+        gsap.killTweensOf(letterGroup.rotation);
+
+        // Physics parameters - tuned for 3-4 second spin on fast swipe
+        // With friction=0.98, maxVel=3.0, minVel=0.02: max spin ~4 seconds
+        const friction = 0.98; // Deceleration factor per frame (higher = longer spin)
+        const minVelocity = 0.02; // Velocity threshold to stop
+        const pixelsPerRadian = 80; // Conversion factor from pixels to rotation (lower = faster spin)
+
+        // Convert pixel velocity to angular velocity (radians per frame at 60fps)
+        let angularVelocity = (velocity / pixelsPerRadian) * (1000 / 60);
+
+        // Cap the max velocity for very fast swipes
+        const maxVelocity = 3.0; // radians per frame - allows multiple full rotations per second
+        angularVelocity = Math.sign(angularVelocity) * Math.min(Math.abs(angularVelocity), maxVelocity);
+
+        const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
+        let currentRotation = drum.userData.currentRotation || 0;
+        let frameCount = 0;
+
+        // Apply motion blur based on velocity
+        this.applyDrumMotionBlur(drumIndex, Math.abs(angularVelocity));
+
+        const animate = () => {
+            // Apply friction
+            angularVelocity *= friction;
+            frameCount++;
+
+            // Update rotation
+            currentRotation += angularVelocity;
+            letterGroup.rotation.x = currentRotation;
+            drum.userData.currentRotation = currentRotation;
+
+            // Calculate current letter position
+            const normalizedRotation = (((-currentRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2));
+            const posIndex = Math.round(normalizedRotation / anglePerPosition) % this.POSITIONS_PER_DRUM;
+            const newLetter = posIndex === 0 ? '' : ALPHABET[posIndex - 1];
+            this.currentLetters[drumIndex] = newLetter;
+
+            // Update motion blur based on current velocity
+            this.applyDrumMotionBlur(drumIndex, Math.abs(angularVelocity));
+
+            // Check if we should stop
+            if (Math.abs(angularVelocity) > minVelocity) {
+                this.momentumAnimation = requestAnimationFrame(animate);
+            } else {
+                // Snap to nearest letter position
+                this.snapToNearestLetter(drumIndex);
+                this.clearDrumMotionBlur(drumIndex);
+                this.triggerRealtimeValidation();
+            }
+        };
+
+        this.momentumAnimation = requestAnimationFrame(animate);
+    }
+
+    /**
+     * Stop any momentum animation in progress
+     */
+    stopMomentum() {
+        if (this.momentumAnimation) {
+            cancelAnimationFrame(this.momentumAnimation);
+            this.momentumAnimation = null;
+        }
+        // Clear any motion blur
+        this.drums.forEach((_, i) => this.clearDrumMotionBlur(i));
+    }
+
+    /**
+     * Snap drum to nearest letter position
+     */
+    snapToNearestLetter(drumIndex) {
+        const drum = this.drums[drumIndex];
+        const letterGroup = drum.userData.letterGroup;
+        if (!letterGroup) return;
+
+        const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
+        const currentRotation = drum.userData.currentRotation || 0;
+
+        // Find nearest position
+        const normalizedRotation = (((-currentRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2));
+        const nearestPosIndex = Math.round(normalizedRotation / anglePerPosition) % this.POSITIONS_PER_DRUM;
+
+        // Calculate exact rotation for this position
+        const fullRotations = Math.round(currentRotation / (Math.PI * 2));
+        const targetRotation = fullRotations * Math.PI * 2 - nearestPosIndex * anglePerPosition;
+
+        // Animate snap with satisfying click
+        gsap.to(letterGroup.rotation, {
+            x: targetRotation,
+            duration: 0.15,
+            ease: 'power2.out',
+            onComplete: () => {
+                drum.userData.currentRotation = targetRotation;
+                const newLetter = nearestPosIndex === 0 ? '' : ALPHABET[nearestPosIndex - 1];
+                this.currentLetters[drumIndex] = newLetter;
+            }
+        });
+    }
+
+    /**
+     * Apply motion blur effect to a spinning drum
+     * Uses vertical scaling to simulate motion blur
+     */
+    applyDrumMotionBlur(drumIndex, velocity) {
+        const drum = this.drums[drumIndex];
+        const letterGroup = drum.userData.letterGroup;
+        if (!letterGroup) return;
+
+        // Scale blur intensity with velocity (0 to ~0.4 stretch)
+        const blurIntensity = Math.min(velocity * 0.3, 0.4);
+
+        // Apply vertical stretch to simulate motion blur
+        letterGroup.children.forEach(letterMesh => {
+            if (letterMesh.material && letterMesh.material.opacity !== undefined) {
+                // Reduce opacity slightly during fast spin
+                letterMesh.material.opacity = Math.max(0.6, 1 - blurIntensity * 0.5);
+                letterMesh.material.transparent = true;
+            }
+            // Stretch in the rotation direction
+            letterMesh.scale.y = 1 + blurIntensity;
+        });
+
+        // Also apply slight transparency/glow to indicate speed
+        if (velocity > 0.5) {
+            drum.userData.isBlurring = true;
+        }
+    }
+
+    /**
+     * Clear motion blur effect from a drum
+     */
+    clearDrumMotionBlur(drumIndex) {
+        const drum = this.drums[drumIndex];
+        if (!drum) return;
+
+        const letterGroup = drum.userData.letterGroup;
+        if (!letterGroup) return;
+
+        // Reset all letter meshes
+        letterGroup.children.forEach(letterMesh => {
+            if (letterMesh.material && letterMesh.material.opacity !== undefined) {
+                letterMesh.material.opacity = 1;
+                letterMesh.material.transparent = false;
+            }
+            // Reset scale
+            gsap.to(letterMesh.scale, {
+                y: 1,
+                duration: 0.2,
+                ease: 'power2.out'
+            });
+        });
+
+        drum.userData.isBlurring = false;
+    }
+
+    /**
+     * Trigger real-time validation callback
+     */
+    triggerRealtimeValidation() {
+        if (this.onRealtimeValidation) {
+            const word = this.getCurrentWord();
+            if (word.length >= 2) {
+                this.onRealtimeValidation(word);
+            }
+        }
     }
 
     getCurrentWord() {
