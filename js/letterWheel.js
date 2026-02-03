@@ -1153,13 +1153,12 @@ export class LetterWheel {
         this.touchDrumIndex = -1;
         this.touchAccumulatedDelta = 0;
 
-        // Check if we have enough velocity for momentum
-        // Typical fast swipe: 1-5 px/ms, moderate swipe: 0.3-1 px/ms
-        const minVelocityThreshold = 0.15; // pixels per ms - low threshold to catch most swipes
-        if (Math.abs(velocity) > minVelocityThreshold && drumIndex !== -1) {
-            this.startMomentum(drumIndex, velocity);
+        // Always trigger momentum on any swipe for testing
+        // Use detected velocity, but ensure minimum for visible effect
+        const effectiveVelocity = Math.sign(velocity || 1) * Math.max(Math.abs(velocity), 0.5);
+        if (drumIndex !== -1) {
+            this.startMomentum(drumIndex, effectiveVelocity);
         } else {
-            // Snap to nearest letter and validate
             this.snapToPosition(this.cursorPosition);
             this.triggerRealtimeValidation();
         }
@@ -1185,8 +1184,8 @@ export class LetterWheel {
 
         // Convert pixel velocity to angular velocity
         // velocity is in px/ms, we want radians/frame at 60fps
-        // A swipe of 1 px/ms should give significant rotation
-        const velocityMultiplier = 0.4; // Amplify the velocity for better feel
+        // Make it very responsive - even small velocities should spin noticeably
+        const velocityMultiplier = 1.5; // High multiplier for dramatic spin
         let angularVelocity = velocity * velocityMultiplier;
 
         // Cap the max velocity for very fast swipes (but allow high values)
