@@ -1121,9 +1121,10 @@ export class LetterWheel {
             this.touchVelocity = weightedSum / weightSum;
         }
 
-        // Directly rotate the drum based on finger movement (1:1 feel)
-        // Convert pixels to radians - higher value = heavier feel
-        const pixelsPerRadian = 100; // How many pixels to rotate one radian
+        // Directly rotate the drum based on finger movement
+        // Higher value = more swipe needed = heavier feel
+        // With 27 positions: ~150px light swipe = ~5 letters, ~350px medium = ~10 letters
+        const pixelsPerRadian = 140;
         const deltaRotation = deltaY / pixelsPerRadian;
 
         const drum = this.drums[this.touchDrumIndex];
@@ -1188,17 +1189,18 @@ export class LetterWheel {
         gsap.killTweensOf(letterGroup.rotation);
 
         // Physics parameters - tuned for weighted, realistic feel
-        // Matches the direct touch control (100 pixels per radian)
-        const friction = 0.985; // Deceleration per frame - tuned for ~4s max spin
-        const minVelocity = 0.005; // Angular velocity threshold to stop
-        const pixelsPerRadian = 100; // Same as touch move for consistent feel
+        // Matches the direct touch control ratio for consistent feel
+        const friction = 0.99; // Deceleration per frame - higher = longer spin
+        const minVelocity = 0.003; // Angular velocity threshold to stop
+        const pixelsPerRadian = 140; // Same as touch move
 
         // Convert pixel velocity to angular velocity
         // velocity is in pixels/ms, convert to radians/frame (at 60fps)
         let angularVelocity = (velocity / pixelsPerRadian) * (1000 / 60);
 
         // Cap the max velocity - limits how fast the hardest swipe can spin
-        const maxVelocity = 0.4; // radians per frame max
+        // At max, with friction 0.99, spins ~4 seconds
+        const maxVelocity = 0.25; // radians per frame max (heavier feel)
         angularVelocity = Math.sign(angularVelocity) * Math.min(Math.abs(angularVelocity), maxVelocity);
 
         const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
@@ -1294,10 +1296,10 @@ export class LetterWheel {
         const letterGroup = drum.userData.letterGroup;
         if (!letterGroup) return;
 
-        // Scale blur intensity with velocity (max velocity is ~0.4)
+        // Scale blur intensity with velocity (max velocity is ~0.25)
         // Normalize to 0-1 range based on max velocity, then scale to blur amount
-        const normalizedVelocity = Math.min(velocity / 0.4, 1.0);
-        const blurIntensity = normalizedVelocity * 0.3; // Max 30% stretch at full speed
+        const normalizedVelocity = Math.min(velocity / 0.25, 1.0);
+        const blurIntensity = normalizedVelocity * 0.25; // Max 25% stretch at full speed
 
         // Apply vertical stretch to simulate motion blur
         letterGroup.children.forEach(letterMesh => {
