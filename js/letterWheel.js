@@ -56,8 +56,10 @@ export class LetterWheel {
 
         // Momentum/velocity tracking for swipe
         this.touchVelocity = 0;
+        this.touchPrevY = 0;
+        this.touchPrevTime = 0;
         this.momentumAnimation = null;
-        this.touchHistory = []; // Track recent touch positions with timestamps
+        this.velocityHistory = []; // Track recent velocities for smoothing
 
         this.group = new THREE.Group();
 
@@ -1074,8 +1076,10 @@ export class LetterWheel {
                 this.touchAccumulatedDelta = 0;
 
                 // Initialize velocity tracking
+                this.touchPrevY = touch.clientY;
+                this.touchPrevTime = performance.now();
                 this.touchVelocity = 0;
-                this.touchHistory = [{ y: touch.clientY, time: performance.now() }];
+                this.velocityHistory = [];
 
                 // Set cursor to this drum
                 this.setCursor(drumIndex);
@@ -1094,27 +1098,32 @@ export class LetterWheel {
         const touch = event.touches[0];
         const now = performance.now();
         const deltaY = this.touchStartY - touch.clientY; // Positive = swipe up
+        const deltaTime = now - this.touchPrevTime;
 
-        // Add to touch history for velocity calculation
-        this.touchHistory.push({ y: touch.clientY, time: now });
+        // Calculate instantaneous velocity (pixels per ms)
+        if (deltaTime > 0) {
+            const instantVelocity = (this.touchPrevY - touch.clientY) / deltaTime;
 
-        // Keep only last 100ms of touch history
-        const historyWindow = 100; // ms
-        while (this.touchHistory.length > 1 &&
-               now - this.touchHistory[0].time > historyWindow) {
-            this.touchHistory.shift();
-        }
-
-        // Calculate velocity over the history window
-        if (this.touchHistory.length >= 2) {
-            const oldest = this.touchHistory[0];
-            const newest = this.touchHistory[this.touchHistory.length - 1];
-            const dt = newest.time - oldest.time;
-            if (dt > 10) { // Need at least 10ms of data
-                // Positive velocity = swiping up (scrolling down through letters)
-                this.touchVelocity = (oldest.y - newest.y) / dt;
+            // Add to velocity history for smoothing (keep last 5 samples)
+            this.velocityHistory.push(instantVelocity);
+            if (this.velocityHistory.length > 5) {
+                this.velocityHistory.shift();
             }
+
+            // Smoothed velocity is weighted average (more recent = higher weight)
+            let weightedSum = 0;
+            let weightSum = 0;
+            this.velocityHistory.forEach((v, i) => {
+                const weight = i + 1;
+                weightedSum += v * weight;
+                weightSum += weight;
+            });
+            this.touchVelocity = weightedSum / weightSum;
         }
+
+        // Update tracking for next frame
+        this.touchPrevY = touch.clientY;
+        this.touchPrevTime = now;
 
         // Accumulate the delta
         this.touchAccumulatedDelta += deltaY;
@@ -1153,12 +1162,13 @@ export class LetterWheel {
         this.touchDrumIndex = -1;
         this.touchAccumulatedDelta = 0;
 
-        // Always trigger momentum on any swipe for testing
-        // Use detected velocity, but ensure minimum for visible effect
-        const effectiveVelocity = Math.sign(velocity || 1) * Math.max(Math.abs(velocity), 0.5);
-        if (drumIndex !== -1) {
-            this.startMomentum(drumIndex, effectiveVelocity);
+        // Check if we have enough velocity for momentum
+        // Higher threshold = need faster swipe to trigger momentum
+        const minVelocityThreshold = 1.0; // pixels per ms - requires deliberate swipe
+        if (Math.abs(velocity) > minVelocityThreshold && drumIndex !== -1) {
+            this.startMomentum(drumIndex, velocity);
         } else {
+            // Snap to nearest letter and validate
             this.snapToPosition(this.cursorPosition);
             this.triggerRealtimeValidation();
         }
@@ -1178,18 +1188,20 @@ export class LetterWheel {
         this.stopMomentum();
         gsap.killTweensOf(letterGroup.rotation);
 
-        // Physics parameters - tuned for 3-4 second spin on fast swipe
-        const friction = 0.985; // Deceleration factor per frame (higher = longer spin)
-        const minVelocity = 0.008; // Angular velocity threshold to stop (radians/frame)
+        // Physics parameters - tuned for weighted, realistic feel
+        // Light swipe = few letters, hard swipe = up to 4 seconds spin
+        const friction = 0.988; // Higher = longer spin, tuned for ~4s at max velocity
+        const minVelocity = 0.008; // Velocity threshold to stop
+        const pixelsPerRadian = 350; // Higher = more swipe needed for same rotation (heavier feel)
 
-        // Convert pixel velocity to angular velocity
-        // velocity is in px/ms, we want radians/frame at 60fps
-        // Make it very responsive - even small velocities should spin noticeably
-        const velocityMultiplier = 1.5; // High multiplier for dramatic spin
-        let angularVelocity = velocity * velocityMultiplier;
+        // Convert pixel velocity to angular velocity (radians per frame at 60fps)
+        // Apply square root for non-linear response - light touches move less
+        const rawVelocity = Math.abs(velocity);
+        const scaledVelocity = Math.sqrt(rawVelocity) * Math.sign(velocity);
+        let angularVelocity = (scaledVelocity / pixelsPerRadian) * (1000 / 60);
 
-        // Cap the max velocity for very fast swipes (but allow high values)
-        const maxVelocity = 2.0; // radians per frame - about 2 full rotations per second at start
+        // Cap the max velocity - this is what a very hard swipe produces
+        const maxVelocity = 0.35; // Much lower max - weighted/heavy feel
         angularVelocity = Math.sign(angularVelocity) * Math.min(Math.abs(angularVelocity), maxVelocity);
 
         const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
@@ -1285,22 +1297,24 @@ export class LetterWheel {
         const letterGroup = drum.userData.letterGroup;
         if (!letterGroup) return;
 
-        // Scale blur intensity with velocity (0 to ~0.4 stretch)
-        const blurIntensity = Math.min(velocity * 0.3, 0.4);
+        // Scale blur intensity with velocity (max velocity is now ~0.35)
+        // Normalize to 0-1 range based on max velocity, then scale to blur amount
+        const normalizedVelocity = Math.min(velocity / 0.35, 1.0);
+        const blurIntensity = normalizedVelocity * 0.35; // Max 35% stretch at full speed
 
         // Apply vertical stretch to simulate motion blur
         letterGroup.children.forEach(letterMesh => {
             if (letterMesh.material && letterMesh.material.opacity !== undefined) {
                 // Reduce opacity slightly during fast spin
-                letterMesh.material.opacity = Math.max(0.6, 1 - blurIntensity * 0.5);
+                letterMesh.material.opacity = Math.max(0.7, 1 - blurIntensity * 0.4);
                 letterMesh.material.transparent = true;
             }
             // Stretch in the rotation direction
             letterMesh.scale.y = 1 + blurIntensity;
         });
 
-        // Also apply slight transparency/glow to indicate speed
-        if (velocity > 0.5) {
+        // Track blur state
+        if (normalizedVelocity > 0.3) {
             drum.userData.isBlurring = true;
         }
     }
