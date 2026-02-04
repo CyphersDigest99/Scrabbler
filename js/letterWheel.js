@@ -60,6 +60,8 @@ export class LetterWheel {
         this.touchPrevTime = 0;
         this.momentumAnimation = null;
         this.velocityHistory = []; // Track recent velocities for smoothing
+        this.totalDragDistance = 0; // Minimum drag required for momentum
+        this.isDragging = false; // True once we've exited the dead zone
 
         this.group = new THREE.Group();
 
@@ -1080,11 +1082,14 @@ export class LetterWheel {
                 this.touchPrevTime = performance.now();
                 this.touchVelocity = 0;
                 this.velocityHistory = [];
+                this.totalDragDistance = 0; // Track total distance dragged
+                this.isDragging = false; // Haven't started actual drag yet
 
                 // Set cursor to this drum
                 this.setCursor(drumIndex);
 
-                event.preventDefault();
+                // Don't preventDefault here - allow focus to trigger keyboard
+                // preventDefault is called in touchmove to prevent scrolling during drag
             }
         }
     }
@@ -1100,8 +1105,24 @@ export class LetterWheel {
         const deltaY = this.touchPrevY - touch.clientY; // Positive = swipe up
         const deltaTime = now - this.touchPrevTime;
 
+        // Track total drag distance for momentum threshold
+        this.totalDragDistance += Math.abs(deltaY);
+
+        // Dead zone: don't start rotating until user has dragged at least 10px
+        // This prevents taps from causing any rotation
+        const DEAD_ZONE = 10;
+        if (!this.isDragging && this.totalDragDistance < DEAD_ZONE) {
+            // Still in dead zone - just update tracking, don't rotate
+            this.touchPrevY = touch.clientY;
+            return;
+        }
+
+        // We've exited the dead zone - now we're actually dragging
+        this.isDragging = true;
+
         // Calculate instantaneous velocity (pixels per ms)
-        if (deltaTime > 0) {
+        // Require minimum 8ms between samples to avoid division spikes
+        if (deltaTime >= 8) {
             const instantVelocity = deltaY / deltaTime;
 
             // Add to velocity history for smoothing (keep last 5 samples)
@@ -1119,12 +1140,15 @@ export class LetterWheel {
                 weightSum += weight;
             });
             this.touchVelocity = weightedSum / weightSum;
+
+            // Update velocity tracking timestamp
+            this.touchPrevTime = now;
         }
 
         // Directly rotate the drum based on finger movement
-        // Higher value = more swipe needed = heavier feel
-        // With 27 positions: ~150px light swipe = ~5 letters, ~350px medium = ~10 letters
-        const pixelsPerRadian = 140;
+        // ~60px per radian = responsive direct control
+        // Light swipe of ~150px moves ~10 letters
+        const pixelsPerRadian = 60;
         const deltaRotation = deltaY / pixelsPerRadian;
 
         const drum = this.drums[this.touchDrumIndex];
@@ -1147,9 +1171,8 @@ export class LetterWheel {
             this.currentLetters[this.touchDrumIndex] = newLetter;
         }
 
-        // Update tracking for next frame
+        // Always update prevY for next frame's delta calculation
         this.touchPrevY = touch.clientY;
-        this.touchPrevTime = now;
     }
 
     handleTouchEnd(event) {
@@ -1157,19 +1180,35 @@ export class LetterWheel {
 
         const drumIndex = this.touchDrumIndex;
         const velocity = this.touchVelocity;
+        const totalDrag = this.totalDragDistance;
+        const wasDragging = this.isDragging;
 
         this.isTouching = false;
         this.touchDrumIndex = -1;
         this.touchAccumulatedDelta = 0;
+        this.totalDragDistance = 0;
+        this.isDragging = false;
 
-        // Check if we have enough velocity for momentum
-        // Higher threshold = need faster swipe to trigger momentum
-        const minVelocityThreshold = 0.5; // pixels per ms - requires deliberate swipe
-        if (Math.abs(velocity) > minVelocityThreshold && drumIndex !== -1) {
+        // If we never left the dead zone, this was just a tap - do nothing
+        if (!wasDragging) {
+            return;
+        }
+
+        // Momentum requires BOTH:
+        // 1. Minimum velocity (fast enough swipe)
+        // 2. Minimum drag distance (not just a tap or tiny movement)
+        const minVelocityThreshold = 0.8; // pixels per ms
+        const minDragDistance = 50; // pixels - must drag at least this far
+
+        const hasEnoughVelocity = Math.abs(velocity) > minVelocityThreshold;
+        const hasEnoughDistance = totalDrag > minDragDistance;
+
+        if (hasEnoughVelocity && hasEnoughDistance && drumIndex !== -1) {
             this.startMomentum(drumIndex, velocity);
         } else {
-            // Snap to nearest letter and validate
-            this.snapToNearestLetter(drumIndex !== -1 ? drumIndex : this.cursorPosition);
+            // Snap in direction of drag (or nearest if no clear direction)
+            const snapDirection = Math.sign(velocity);
+            this.snapToNearestLetter(drumIndex !== -1 ? drumIndex : this.cursorPosition, snapDirection);
             this.triggerRealtimeValidation();
         }
     }
@@ -1188,24 +1227,24 @@ export class LetterWheel {
         this.stopMomentum();
         gsap.killTweensOf(letterGroup.rotation);
 
-        // Physics parameters - tuned for weighted, realistic feel
-        // Matches the direct touch control ratio for consistent feel
-        const friction = 0.99; // Deceleration per frame - higher = longer spin
-        const minVelocity = 0.003; // Angular velocity threshold to stop
-        const pixelsPerRadian = 140; // Same as touch move
+        // Physics parameters - tuned for heavy brass machinery feel
+        const friction = 0.96; // Deceleration per frame - lower = stops faster
+        const minVelocity = 0.008; // Angular velocity threshold to stop
+        const pixelsPerRadian = 60; // Same as touch move for consistent feel
 
         // Convert pixel velocity to angular velocity
         // velocity is in pixels/ms, convert to radians/frame (at 60fps)
         let angularVelocity = (velocity / pixelsPerRadian) * (1000 / 60);
 
-        // Cap the max velocity - limits how fast the hardest swipe can spin
-        // At max, with friction 0.99, spins ~4 seconds
-        const maxVelocity = 0.25; // radians per frame max (heavier feel)
+        // Cap the max velocity - prevents "flying off" even with fast swipes
+        const maxVelocity = 0.12; // radians per frame max - controlled spin
         angularVelocity = Math.sign(angularVelocity) * Math.min(Math.abs(angularVelocity), maxVelocity);
 
         const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
         let currentRotation = drum.userData.currentRotation || 0;
-        let frameCount = 0;
+
+        // Track direction of travel for snap at end
+        const spinDirection = Math.sign(angularVelocity);
 
         // Apply motion blur based on velocity
         this.applyDrumMotionBlur(drumIndex, Math.abs(angularVelocity));
@@ -1213,7 +1252,6 @@ export class LetterWheel {
         const animate = () => {
             // Apply friction
             angularVelocity *= friction;
-            frameCount++;
 
             // Update rotation
             currentRotation += angularVelocity;
@@ -1233,8 +1271,8 @@ export class LetterWheel {
             if (Math.abs(angularVelocity) > minVelocity) {
                 this.momentumAnimation = requestAnimationFrame(animate);
             } else {
-                // Snap to nearest letter position
-                this.snapToNearestLetter(drumIndex);
+                // Snap to next letter in direction of travel (no snap-back)
+                this.snapToNearestLetter(drumIndex, spinDirection);
                 this.clearDrumMotionBlur(drumIndex);
                 this.triggerRealtimeValidation();
             }
@@ -1257,8 +1295,10 @@ export class LetterWheel {
 
     /**
      * Snap drum to nearest letter position
+     * @param {number} drumIndex - Which drum to snap
+     * @param {number} direction - Optional: 1 for forward (down), -1 for backward (up), 0 for nearest
      */
-    snapToNearestLetter(drumIndex) {
+    snapToNearestLetter(drumIndex, direction = 0) {
         const drum = this.drums[drumIndex];
         const letterGroup = drum.userData.letterGroup;
         if (!letterGroup) return;
@@ -1266,13 +1306,32 @@ export class LetterWheel {
         const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
         const currentRotation = drum.userData.currentRotation || 0;
 
-        // Find nearest position
+        // Calculate position within the current revolution
         const normalizedRotation = (((-currentRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2));
-        const nearestPosIndex = Math.round(normalizedRotation / anglePerPosition) % this.POSITIONS_PER_DRUM;
+        const exactPosition = normalizedRotation / anglePerPosition;
 
-        // Calculate exact rotation for this position
-        const fullRotations = Math.round(currentRotation / (Math.PI * 2));
-        const targetRotation = fullRotations * Math.PI * 2 - nearestPosIndex * anglePerPosition;
+        // Determine which position to snap to based on direction
+        let targetPosIndex;
+        if (direction < 0) {
+            // Swiping down - snap forward in that direction
+            targetPosIndex = Math.floor(exactPosition);
+        } else if (direction > 0) {
+            // Swiping up - snap forward in that direction
+            targetPosIndex = Math.ceil(exactPosition);
+        } else {
+            // No direction preference - snap to nearest
+            targetPosIndex = Math.round(exactPosition);
+        }
+        // Ensure positive modulo (handle edge cases)
+        targetPosIndex = ((targetPosIndex % this.POSITIONS_PER_DRUM) + this.POSITIONS_PER_DRUM) % this.POSITIONS_PER_DRUM;
+
+        // Calculate the base rotation for this letter (within one revolution)
+        const baseTargetRotation = -targetPosIndex * anglePerPosition;
+
+        // Find which full rotation offset puts us closest to current rotation
+        const fullRotation = Math.PI * 2;
+        const offset = Math.round((currentRotation - baseTargetRotation) / fullRotation);
+        const targetRotation = baseTargetRotation + offset * fullRotation;
 
         // Animate snap with satisfying click
         gsap.to(letterGroup.rotation, {
@@ -1281,7 +1340,7 @@ export class LetterWheel {
             ease: 'power2.out',
             onComplete: () => {
                 drum.userData.currentRotation = targetRotation;
-                const newLetter = nearestPosIndex === 0 ? '' : ALPHABET[nearestPosIndex - 1];
+                const newLetter = targetPosIndex === 0 ? '' : ALPHABET[targetPosIndex - 1];
                 this.currentLetters[drumIndex] = newLetter;
             }
         });
@@ -1296,9 +1355,9 @@ export class LetterWheel {
         const letterGroup = drum.userData.letterGroup;
         if (!letterGroup) return;
 
-        // Scale blur intensity with velocity (max velocity is ~0.25)
+        // Scale blur intensity with velocity (max velocity is ~0.12)
         // Normalize to 0-1 range based on max velocity, then scale to blur amount
-        const normalizedVelocity = Math.min(velocity / 0.25, 1.0);
+        const normalizedVelocity = Math.min(velocity / 0.12, 1.0);
         const blurIntensity = normalizedVelocity * 0.25; // Max 25% stretch at full speed
 
         // Apply vertical stretch to simulate motion blur
