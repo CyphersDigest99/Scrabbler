@@ -279,21 +279,24 @@ class Scrabbler {
                 this.letterWheel.handleKeyUp(e);
             });
 
-            // Touch events on hidden input - this allows iOS to trigger keyboard
-            // The input overlays the canvas and forwards touch events to letterWheel
+            // Touch events on hidden input overlay
+            // Let taps through naturally for keyboard, only intercept drags
             this.wheelHiddenInput.addEventListener('touchstart', (e) => {
                 this.letterWheel.handleTouchStart(e);
-            }, { passive: false });
+                // Don't preventDefault - let Android handle focus naturally
+            }, { passive: true });
 
             this.wheelHiddenInput.addEventListener('touchmove', (e) => {
                 this.letterWheel.handleTouchMove(e);
+                // Prevent scrolling during drag
+                if (this.letterWheel.isDragging) {
+                    e.preventDefault();
+                }
             }, { passive: false });
 
             this.wheelHiddenInput.addEventListener('touchend', (e) => {
                 this.letterWheel.handleTouchEnd(e);
-                // Focus triggers keyboard - iOS respects this since touch was on the input
-                this.wheelHiddenInput.focus();
-            });
+            }, { passive: true });
 
             // Auto-focus on page load
             this.wheelHiddenInput.focus();
