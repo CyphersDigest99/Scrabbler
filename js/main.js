@@ -279,21 +279,20 @@ class Scrabbler {
                 this.letterWheel.handleKeyUp(e);
             });
 
-            // Touch events for mobile swipe-to-spin
-            this.canvas.addEventListener('touchstart', (e) => {
+            // Touch events on hidden input - this allows iOS to trigger keyboard
+            // The input overlays the canvas and forwards touch events to letterWheel
+            this.wheelHiddenInput.addEventListener('touchstart', (e) => {
                 this.letterWheel.handleTouchStart(e);
             }, { passive: false });
 
-            this.canvas.addEventListener('touchmove', (e) => {
+            this.wheelHiddenInput.addEventListener('touchmove', (e) => {
                 this.letterWheel.handleTouchMove(e);
             }, { passive: false });
 
-            this.canvas.addEventListener('touchend', (e) => {
+            this.wheelHiddenInput.addEventListener('touchend', (e) => {
                 this.letterWheel.handleTouchEnd(e);
-                // Focus on tap (not drag) to trigger mobile keyboard
-                if (this.letterWheel.lastTouchWasTap) {
-                    focusWheelInput();
-                }
+                // Focus triggers keyboard - iOS respects this since touch was on the input
+                this.wheelHiddenInput.focus();
             });
 
             // Auto-focus on page load
