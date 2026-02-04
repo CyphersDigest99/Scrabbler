@@ -202,7 +202,7 @@ class Scrabbler {
             this.wheelHiddenInput.setAttribute('autocapitalize', 'characters');
             this.wheelHiddenInput.setAttribute('spellcheck', 'false');
             this.wheelHiddenInput.setAttribute('enterkeyhint', 'go');
-            this.wheelHiddenInput.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
+            // Use CSS class (includes font-size:16px to prevent iOS zoom)
             this.canvas.parentElement.appendChild(this.wheelHiddenInput);
 
             // Handle text input from mobile keyboard
@@ -282,7 +282,6 @@ class Scrabbler {
             // Touch events for mobile swipe-to-spin
             this.canvas.addEventListener('touchstart', (e) => {
                 this.letterWheel.handleTouchStart(e);
-                focusWheelInput();
             }, { passive: false });
 
             this.canvas.addEventListener('touchmove', (e) => {
@@ -291,6 +290,10 @@ class Scrabbler {
 
             this.canvas.addEventListener('touchend', (e) => {
                 this.letterWheel.handleTouchEnd(e);
+                // Focus on tap (not drag) to trigger mobile keyboard
+                if (this.letterWheel.lastTouchWasTap) {
+                    focusWheelInput();
+                }
             });
 
             // Auto-focus on page load

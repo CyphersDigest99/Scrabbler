@@ -62,6 +62,7 @@ export class LetterWheel {
         this.velocityHistory = []; // Track recent velocities for smoothing
         this.totalDragDistance = 0; // Minimum drag required for momentum
         this.isDragging = false; // True once we've exited the dead zone
+        this.lastTouchWasTap = false; // For keyboard focus on tap
 
         this.group = new THREE.Group();
 
@@ -1189,10 +1190,13 @@ export class LetterWheel {
         this.totalDragDistance = 0;
         this.isDragging = false;
 
-        // If we never left the dead zone, this was just a tap - do nothing
+        // If we never left the dead zone, this was just a tap
+        // Set flag so main.js can trigger keyboard focus
         if (!wasDragging) {
+            this.lastTouchWasTap = true;
             return;
         }
+        this.lastTouchWasTap = false;
 
         // Momentum requires BOTH:
         // 1. Minimum velocity (fast enough swipe)

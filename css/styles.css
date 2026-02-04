@@ -1728,6 +1728,19 @@ body::before {
     font-size: 16px; /* Prevents iOS zoom on focus */
 }
 
+/* Hidden input for mobile keyboard on word wheel */
+.wheel-hidden-input {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    pointer-events: none;
+    z-index: -1;
+}
+
 /* ============================================
    GUIDED TOUR STYLES
    ============================================ */
