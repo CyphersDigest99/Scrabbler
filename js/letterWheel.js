@@ -1412,14 +1412,9 @@ export class LetterWheel {
 
     /**
      * Spin to a word in pattern mode - keeps locked slots stationary
-     * @param {string} word - The word to display
-     * @param {Array<boolean>} lockedSlots - Which slots have locked letters
-     * @param {Array<boolean>} lockedEmpty - Which empty slots are locked
-     * @param {number} startPos - Optional starting position on the wheel (default: calculated from lockedSlots)
      */
     spinToPatternWord(word, lockedSlots, lockedEmpty, startPos = null) {
         const letters = word.toUpperCase().split('');
-        const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
 
         // If startPos not provided, calculate from first locked slot
         if (startPos === null) {
@@ -1432,175 +1427,94 @@ export class LetterWheel {
             }
         }
 
-        // Word starts at startPos
+        // Build drum params, skipping locked/unchanged slots
         const drumParams = [];
-        let lastAnimatedDrum = -1;
-
         for (let i = 0; i < this.NUM_SLOTS; i++) {
-            // Calculate which letter index this slot corresponds to
             const letterIdx = i - startPos;
             const targetLetter = (letterIdx >= 0 && letterIdx < letters.length) ? letters[letterIdx] : '';
-            const targetPos = this.getPositionIndex(targetLetter);
-
-            // Check if this slot should animate
             const shouldAnimate = !lockedSlots[i] && !lockedEmpty[i];
-
-            // Determine if slot needs to change (either show new letter or clear existing)
             const currentLetter = this.currentLetters[i] || '';
-            const needsChange = shouldAnimate && (targetLetter !== currentLetter);
 
-            if (needsChange) {
-                // Random number of extra spins (3-8 full rotations)
-                const extraSpins = 3 + Math.floor(Math.random() * 6);
-                const baseDelay = i * 100;
-                const randomDelay = Math.random() * 300;
-                const stopDelay = baseDelay + randomDelay;
-                const duration = 1.2 + (extraSpins * 0.12) + (Math.random() * 0.25);
-
+            if (shouldAnimate && targetLetter !== currentLetter) {
                 drumParams.push({
                     index: i,
                     targetLetter,
-                    targetPos,
-                    extraSpins,
-                    stopDelay,
-                    duration,
-                    shouldAnimate: true
-                });
-                lastAnimatedDrum = i;
-            } else {
-                // This slot stays still (locked or already correct)
-                drumParams.push({
-                    index: i,
-                    targetLetter: lockedSlots[i] ? this.currentLetters[i] : targetLetter,
-                    targetPos: lockedSlots[i] ? this.getPositionIndex(this.currentLetters[i]) : targetPos,
-                    shouldAnimate: false
+                    targetPos: this.getPositionIndex(targetLetter),
+                    extraSpins: 3 + Math.floor(Math.random() * 6),
+                    stopDelay: i * 100 + Math.random() * 300,
+                    duration: 1.2 + ((3 + Math.floor(Math.random() * 6)) * 0.12) + (Math.random() * 0.25)
                 });
             }
         }
 
-        // Animate only the drums that should spin
-        for (const params of drumParams) {
-            const i = params.index;
-            const drum = this.drums[i];
-            const letterGroup = drum.userData.letterGroup;
-            if (!letterGroup) continue;
-
-            if (!params.shouldAnimate) {
-                // Keep this slot as-is (already has correct letter or is locked empty)
-                continue;
-            }
-
-            const { targetLetter, targetPos, extraSpins, stopDelay, duration } = params;
-
-            // Kill any existing animation
-            gsap.killTweensOf(letterGroup.rotation);
-
-            // Calculate target rotation with extra spins
-            const targetRotation = -targetPos * anglePerPosition;
-            const totalRotation = targetRotation - (extraSpins * Math.PI * 2);
-
-            // Start spinning after individual delay
-            setTimeout(() => {
-                gsap.to(letterGroup.rotation, {
-                    x: totalRotation,
-                    duration: duration,
-                    ease: 'power2.out',
-                    onUpdate: () => {
-                        drum.userData.currentRotation = letterGroup.rotation.x;
-                    },
-                    onComplete: () => {
-                        // Snap to exact position
-                        const snappedRotation = -targetPos * anglePerPosition;
-                        letterGroup.rotation.x = snappedRotation;
-                        drum.userData.currentRotation = snappedRotation;
-                        this.currentLetters[i] = targetLetter;
-
-                        // Trigger validation when last animated drum finishes
-                        if (i === lastAnimatedDrum) {
-                            setTimeout(() => {
-                                if (this.onRealtimeValidation) {
-                                    const finalWord = this.getCurrentWord();
-                                    if (finalWord.length >= 2) {
-                                        this.onRealtimeValidation(finalWord);
-                                    }
-                                }
-                            }, 50);
-                        }
-                    }
-                });
-            }, stopDelay);
-        }
+        this._animateDrums(drumParams);
     }
 
     /**
      * Spin to a word with slot-machine style animation
-     * All drums spin simultaneously at different speeds
      */
     spinToWord(word) {
         const letters = word.toUpperCase().split('');
-        const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
-
-        // Calculate starting position to center the word
         const startSlot = Math.floor((this.NUM_SLOTS - letters.length) / 2);
 
-        // First, clear all current letters
+        // Clear all current letters
         for (let i = 0; i < this.NUM_SLOTS; i++) {
             this.currentLetters[i] = '';
         }
 
-        // Generate random parameters for each drum
+        // Build drum params for all slots
         const drumParams = [];
         for (let i = 0; i < this.NUM_SLOTS; i++) {
-            // Get letter for this slot (offset by startSlot for centering)
             const letterIndex = i - startSlot;
             const targetLetter = (letterIndex >= 0 && letterIndex < letters.length) ? letters[letterIndex] : '';
-            const targetPos = this.getPositionIndex(targetLetter);
-
-            // Random number of extra spins (3-8 full rotations)
             const extraSpins = 3 + Math.floor(Math.random() * 6);
 
-            // Random delay before stopping (stagger effect)
-            const baseDelay = i * 120;
-            const randomDelay = Math.random() * 350;
-            const stopDelay = baseDelay + randomDelay;
-
-            // Duration varies by number of spins
-            const duration = 1.2 + (extraSpins * 0.12) + (Math.random() * 0.25);
-
             drumParams.push({
+                index: i,
                 targetLetter,
-                targetPos,
+                targetPos: this.getPositionIndex(targetLetter),
                 extraSpins,
-                stopDelay,
-                duration
+                stopDelay: i * 120 + Math.random() * 350,
+                duration: 1.2 + (extraSpins * 0.12) + (Math.random() * 0.25)
             });
         }
 
-        // Find which drum finishes last
-        const finishTimes = drumParams.map(p => p.stopDelay + p.duration * 1000);
-        const maxFinishTime = Math.max(...finishTimes);
-        const lastDrumIndex = finishTimes.indexOf(maxFinishTime);
+        // Move cursor to end of word after all animations finish
+        const maxFinishTime = Math.max(...drumParams.map(p => p.stopDelay + p.duration * 1000));
+        this._animateDrums(drumParams, () => {
+            this.setCursor(Math.min(startSlot + letters.length - 1, this.NUM_SLOTS - 1));
+        }, maxFinishTime);
+    }
 
-        // Start all drums spinning
-        for (let i = 0; i < this.NUM_SLOTS; i++) {
+    /**
+     * Shared drum animation engine used by spinToWord and spinToPatternWord.
+     * @param {Array} drumParams - Array of {index, targetLetter, targetPos, extraSpins, stopDelay, duration}
+     * @param {Function} onAllComplete - Optional callback after all animations finish
+     * @param {number} totalDuration - Optional total animation time for the onAllComplete delay
+     */
+    _animateDrums(drumParams, onAllComplete = null, totalDuration = 0) {
+        // Cancel any pending animation timeouts from a previous call
+        this._cancelPendingAnimations();
+
+        const anglePerPosition = (Math.PI * 2) / this.POSITIONS_PER_DRUM;
+
+        // Find which drum animates last (by index order for pattern, by finish time for word)
+        const lastDrumIndex = drumParams.length > 0
+            ? drumParams[drumParams.length - 1].index
+            : -1;
+
+        for (const params of drumParams) {
+            const { index: i, targetLetter, targetPos, extraSpins, stopDelay, duration } = params;
             const drum = this.drums[i];
             const letterGroup = drum.userData.letterGroup;
             if (!letterGroup) continue;
 
-            const params = drumParams[i];
-            const { targetLetter, targetPos, extraSpins, stopDelay, duration } = params;
-
-            // Kill any existing animation
             gsap.killTweensOf(letterGroup.rotation);
 
-            // Calculate target rotation with extra spins
             const targetRotation = -targetPos * anglePerPosition;
-
-            // Add multiple full rotations for dramatic effect
             const totalRotation = targetRotation - (extraSpins * Math.PI * 2);
 
-            // Start spinning after individual delay
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 gsap.to(letterGroup.rotation, {
                     x: totalRotation,
                     duration: duration,
@@ -1609,15 +1523,13 @@ export class LetterWheel {
                         drum.userData.currentRotation = letterGroup.rotation.x;
                     },
                     onComplete: () => {
-                        // Snap to exact position
                         const snappedRotation = -targetPos * anglePerPosition;
                         letterGroup.rotation.x = snappedRotation;
                         drum.userData.currentRotation = snappedRotation;
                         this.currentLetters[i] = targetLetter;
 
-                        // Trigger validation when last drum finishes
                         if (i === lastDrumIndex) {
-                            setTimeout(() => {
+                            const validationTimeout = setTimeout(() => {
                                 if (this.onRealtimeValidation) {
                                     const finalWord = this.getCurrentWord();
                                     if (finalWord.length >= 2) {
@@ -1625,16 +1537,30 @@ export class LetterWheel {
                                     }
                                 }
                             }, 50);
+                            this._pendingAnimationTimeouts.push(validationTimeout);
                         }
                     }
                 });
             }, stopDelay);
+            this._pendingAnimationTimeouts.push(timeoutId);
         }
 
-        // Move cursor to end of word after animation (accounting for centering)
-        setTimeout(() => {
-            this.setCursor(Math.min(startSlot + letters.length - 1, this.NUM_SLOTS - 1));
-        }, maxFinishTime + 100);
+        if (onAllComplete && totalDuration > 0) {
+            const completeTimeout = setTimeout(onAllComplete, totalDuration + 100);
+            this._pendingAnimationTimeouts.push(completeTimeout);
+        }
+    }
+
+    /**
+     * Cancel all pending animation timeouts to prevent overlapping animations
+     */
+    _cancelPendingAnimations() {
+        if (this._pendingAnimationTimeouts) {
+            for (const id of this._pendingAnimationTimeouts) {
+                clearTimeout(id);
+            }
+        }
+        this._pendingAnimationTimeouts = [];
     }
 
     setWord(word) {

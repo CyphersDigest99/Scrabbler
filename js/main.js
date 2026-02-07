@@ -179,12 +179,6 @@ class Scrabbler {
             }
         });
 
-        // Escape key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.instructionsModal.classList.contains('hidden')) {
-                this.closeInstructionsModal();
-            }
-        });
     }
 
     closeInstructionsModal() {
@@ -259,8 +253,9 @@ class Scrabbler {
             // Make canvas focusable (fallback for desktop)
             this.canvas.tabIndex = 0;
 
-            // Keyboard input for letter wheel (desktop fallback via canvas)
+            // Unified keyboard handler for letter wheel (desktop fallback via canvas)
             this.canvas.addEventListener('keydown', (e) => {
+                // Pattern mode: intercept Up/Down for match cycling
                 if (this.patternMode && this.patternMatches.length > 0) {
                     if (e.key === 'ArrowUp') {
                         e.preventDefault();
@@ -271,6 +266,21 @@ class Scrabbler {
                         this.cyclePatternMatch(1);
                         return;
                     }
+                }
+
+                // Hide validation banner when typing starts
+                if (/^[a-zA-Z]$/.test(e.key)) {
+                    this.hideValidation();
+                }
+
+                // Clear real-time validation when deleting
+                if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'Delete') {
+                    setTimeout(() => {
+                        const word = this.letterWheel.getCurrentWord();
+                        if (word.length < 2) {
+                            this.clearRealtimeValidation();
+                        }
+                    }, 100);
                 }
 
                 this.letterWheel.handleKeyDown(e);
@@ -330,26 +340,6 @@ class Scrabbler {
             this.hideAnagramResults();
         });
 
-        // Escape key on canvas clears real-time validation
-        this.canvas.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'Delete') {
-                // Give a short delay for the wheel to update
-                setTimeout(() => {
-                    const word = this.letterWheel.getCurrentWord();
-                    if (word.length < 2) {
-                        this.clearRealtimeValidation();
-                    }
-                }, 100);
-            }
-        });
-
-        // Hide validation when typing starts
-        this.canvas.addEventListener('keydown', (e) => {
-            if (/^[a-zA-Z]$/.test(e.key)) {
-                this.hideValidation();
-            }
-        });
-
         // Definition modal close button
         this.closeDefinitionBtn.addEventListener('click', () => {
             this.hideDefinitionModal();
@@ -358,13 +348,6 @@ class Scrabbler {
         // Close modal on background click
         this.definitionModal.addEventListener('click', (e) => {
             if (e.target === this.definitionModal) {
-                this.hideDefinitionModal();
-            }
-        });
-
-        // Close modal on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.definitionModal.classList.contains('hidden')) {
                 this.hideDefinitionModal();
             }
         });
@@ -477,16 +460,22 @@ class Scrabbler {
         this.filterPrevBtn.addEventListener('keydown', handleNavKeydown);
         this.filterNextBtn.addEventListener('keydown', handleNavKeydown);
 
-        // Close word lists modal on Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.wordListsModal.classList.contains('hidden')) {
-                this.closeWordListsModal();
-            }
-        });
-
         // Pattern lock toggle
         this.patternLockToggle.addEventListener('change', () => {
             this.togglePatternMode(this.patternLockToggle.checked);
+        });
+
+        // Unified Escape key handler for all modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            // Close modals in priority order (topmost first)
+            if (!this.definitionModal.classList.contains('hidden')) {
+                this.hideDefinitionModal();
+            } else if (!this.wordListsModal.classList.contains('hidden')) {
+                this.closeWordListsModal();
+            } else if (!this.instructionsModal.classList.contains('hidden')) {
+                this.closeInstructionsModal();
+            }
         });
 
         // Orientation change triggers canvas resize

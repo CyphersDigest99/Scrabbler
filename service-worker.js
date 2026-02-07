@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scrabbler-v2';
+const CACHE_NAME = 'scrabbler-v3';
 
 // Relative asset paths (works with any base URL, including GitHub Pages subpaths)
 const STATIC_ASSET_PATHS = [
@@ -10,7 +10,6 @@ const STATIC_ASSET_PATHS = [
     'js/dictionary.js',
     'js/letterRack.js',
     'js/tour.js',
-    'js/search.js',
     'js/definitions.js',
     'js/utils.js',
     'data/scrabble-dictionary.txt',
