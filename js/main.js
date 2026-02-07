@@ -2,7 +2,7 @@ import { SceneManager } from './scene.js';
 import { LetterWheel } from './letterWheel.js';
 import { Dictionary } from './dictionary.js';
 import { LetterRack } from './letterRack.js';
-import { SearchManager } from './search.js';
+
 import { DefinitionService } from './definitions.js';
 import { Tour } from './tour.js';
 
@@ -15,7 +15,6 @@ class Scrabbler {
         this.letterWheel = null;
         this.dictionary = null;
         this.letterRack = null;
-        this.searchManager = null;
         this.definitionService = null;
 
         this.init();
@@ -116,18 +115,21 @@ class Scrabbler {
             (words) => this.displayAnagramResults(words)
         );
 
-        // Initialize search manager
-        this.searchManager = new SearchManager(this.dictionary);
-
         // Set up event listeners
         this.setupEventListeners();
 
         // Set up guided tour
         this.setupTour();
 
-        // Start render loop only if WebGL is enabled
+        // Initial render + set up render callbacks
         if (this.webGLEnabled) {
-            this.animate();
+            this._renderScheduled = false;
+            this._continuousRender = false;
+            this.letterWheel.onRenderNeeded = () => this.requestRender();
+            this.letterWheel.onContinuousRenderStart = () => this.startContinuousRender();
+            this.letterWheel.onContinuousRenderStop = () => this.stopContinuousRender();
+            this.sceneManager.onResizeCallback = () => this.requestRender();
+            this.requestRender();
         }
 
         console.log('Scrabbler initialized successfully!');
@@ -202,7 +204,7 @@ class Scrabbler {
             this.wheelHiddenInput.setAttribute('autocapitalize', 'characters');
             this.wheelHiddenInput.setAttribute('spellcheck', 'false');
             this.wheelHiddenInput.setAttribute('enterkeyhint', 'go');
-            // Use CSS class (includes font-size:16px to prevent iOS zoom)
+            this.wheelHiddenInput.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;font-size:16px;';
             this.canvas.parentElement.appendChild(this.wheelHiddenInput);
 
             // Handle text input from mobile keyboard
@@ -279,24 +281,19 @@ class Scrabbler {
                 this.letterWheel.handleKeyUp(e);
             });
 
-            // Touch events on hidden input overlay
-            // Let taps through naturally for keyboard, only intercept drags
-            this.wheelHiddenInput.addEventListener('touchstart', (e) => {
+            // Touch events for mobile swipe-to-spin
+            this.canvas.addEventListener('touchstart', (e) => {
                 this.letterWheel.handleTouchStart(e);
-                // Don't preventDefault - let Android handle focus naturally
+                focusWheelInput();
             }, { passive: true });
 
-            this.wheelHiddenInput.addEventListener('touchmove', (e) => {
+            this.canvas.addEventListener('touchmove', (e) => {
                 this.letterWheel.handleTouchMove(e);
-                // Prevent scrolling during drag
-                if (this.letterWheel.isDragging) {
-                    e.preventDefault();
-                }
             }, { passive: false });
 
-            this.wheelHiddenInput.addEventListener('touchend', (e) => {
+            this.canvas.addEventListener('touchend', (e) => {
                 this.letterWheel.handleTouchEnd(e);
-            }, { passive: true });
+            });
 
             // Auto-focus on page load
             this.wheelHiddenInput.focus();
@@ -497,6 +494,7 @@ class Scrabbler {
             setTimeout(() => {
                 if (this.sceneManager) {
                     this.sceneManager.onResize();
+                    this.requestRender();
                 }
             }, 200);
         });
@@ -813,16 +811,22 @@ class Scrabbler {
             this.definitionPhonetic.textContent = result.phonetic;
         }
 
-        // Build definition HTML
+        // Build definition HTML (sanitize API response to prevent XSS)
+        const escapeHtml = (str) => {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        };
+
         let html = '';
         for (const meaning of result.meanings) {
             html += `<div class="definition-meaning">`;
-            html += `<p class="part-of-speech">${meaning.partOfSpeech}</p>`;
+            html += `<p class="part-of-speech">${escapeHtml(meaning.partOfSpeech)}</p>`;
             html += `<ol>`;
             for (const def of meaning.definitions) {
-                html += `<li>${def.definition}`;
+                html += `<li>${escapeHtml(def.definition)}`;
                 if (def.example) {
-                    html += `<p class="example">"${def.example}"</p>`;
+                    html += `<p class="example">"${escapeHtml(def.example)}"</p>`;
                 }
                 html += `</li>`;
             }
@@ -1083,9 +1087,36 @@ class Scrabbler {
         document.body.appendChild(errorDiv);
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
-        this.sceneManager.render();
+    /**
+     * Request a render on the next animation frame.
+     * Call this whenever the scene changes (animations, interactions, resize).
+     */
+    requestRender() {
+        if (this._renderScheduled) return;
+        this._renderScheduled = true;
+        requestAnimationFrame(() => {
+            this._renderScheduled = false;
+            this.sceneManager.render();
+        });
+    }
+
+    /**
+     * Start continuous rendering (for ongoing animations).
+     * Call stopContinuousRender() when the animation ends.
+     */
+    startContinuousRender() {
+        if (this._continuousRender) return;
+        this._continuousRender = true;
+        const loop = () => {
+            if (!this._continuousRender) return;
+            this.sceneManager.render();
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    }
+
+    stopContinuousRender() {
+        this._continuousRender = false;
     }
 }
 

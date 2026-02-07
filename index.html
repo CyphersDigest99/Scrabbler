@@ -56,29 +56,6 @@
         <!-- Main Letter Wheel Section -->
         <section class="letter-wheel-section">
             <div class="brass-frame">
-                <!-- Slot machine lights -->
-                <div class="light-strip top-lights">
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                </div>
-                <div class="light-strip bottom-lights">
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                    <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
-                </div>
-
-                <div class="frame-corner top-left"></div>
-                <div class="frame-corner top-right"></div>
-                <div class="frame-corner bottom-left"></div>
-                <div class="frame-corner bottom-right"></div>
-                <div class="rivet rivet-1"></div>
-                <div class="rivet rivet-2"></div>
-                <div class="rivet rivet-3"></div>
-                <div class="rivet rivet-4"></div>
-
                 <div id="canvas-container">
                     <canvas id="letter-wheel-canvas"></canvas>
                     <!-- Match counter (shown in pattern mode) -->
@@ -98,16 +75,16 @@
                         <p><kbd>Type</kbd> to enter letters &bull; <kbd>&larr;</kbd><kbd>&rarr;</kbd> move cursor &bull; <kbd>&uarr;</kbd><kbd>&darr;</kbd> cycle letters &bull; <kbd>Enter</kbd> validate &bull; <kbd>Backspace</kbd> clear</p>
                     </div>
                     <!-- Clear Wheel Button (inside canvas) -->
-                    <button id="clear-wheel-btn" class="clear-wheel-btn" title="Clear Word Wheel">
+                    <button id="clear-wheel-btn" class="clear-wheel-btn" title="Clear Word Wheel" aria-label="Clear word wheel">
                         <span>&#8634;</span>
                     </button>
                 </div>
                 <!-- Word Lists Button (left) -->
-                <button id="word-lists-btn" class="wheel-btn left" title="Word Lists">
+                <button id="word-lists-btn" class="wheel-btn left" title="Word Lists" aria-label="Word lists">
                     <span>&#9776;</span>
                 </button>
                 <!-- Random Word Button (right) -->
-                <button id="random-word-btn" class="wheel-btn right" title="Random Word">
+                <button id="random-word-btn" class="wheel-btn right" title="Random Word" aria-label="Random word">
                     <span>&#127922;</span>
                 </button>
             </div>
@@ -160,7 +137,7 @@
     <!-- Word Lists Modal -->
     <div id="word-lists-modal" class="word-lists-modal hidden">
         <div class="word-lists-content">
-            <button class="close-btn" id="close-word-lists">&times;</button>
+            <button class="close-btn" id="close-word-lists" aria-label="Close word lists">&times;</button>
             <h2>Word Lists</h2>
             <div class="word-lists-categories">
                 <button class="category-btn" data-category="2-letter">2-Letter Words</button>
@@ -184,7 +161,7 @@
     <!-- Definition Modal -->
     <div id="definition-modal" class="definition-modal hidden">
         <div class="definition-content">
-            <button class="close-btn" id="close-definition">&times;</button>
+            <button class="close-btn" id="close-definition" aria-label="Close definition">&times;</button>
             <h2 id="definition-word"></h2>
             <p id="definition-phonetic" class="phonetic"></p>
             <div id="definition-body"></div>
@@ -194,7 +171,7 @@
     <!-- Instructions Modal -->
     <div id="instructions-modal" class="instructions-modal hidden">
         <div class="instructions-content">
-            <button class="close-btn" id="close-instructions">&times;</button>
+            <button class="close-btn" id="close-instructions" aria-label="Close instructions">&times;</button>
             <h2>How to Play</h2>
             <p class="instructions-subtitle">Your steampunk Scrabble word validator</p>
 
@@ -237,7 +214,7 @@
     </div>
 
     <!-- Help Button (shows instructions) -->
-    <button id="help-btn" class="help-btn" title="Show Instructions">?</button>
+    <button id="help-btn" class="help-btn" title="Show Instructions" aria-label="Show instructions">?</button>
 
     <!-- Global error handler for iOS Safari -->
     <script>

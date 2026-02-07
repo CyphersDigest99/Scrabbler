@@ -5,6 +5,7 @@
 export class DefinitionService {
     constructor() {
         this.cache = new Map();
+        this.pending = new Map(); // Deduplicates in-flight requests
         this.apiUrl = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
     }
 
@@ -21,13 +22,29 @@ export class DefinitionService {
             return this.cache.get(normalizedWord);
         }
 
+        // Deduplicate in-flight requests for the same word
+        if (this.pending.has(normalizedWord)) {
+            return this.pending.get(normalizedWord);
+        }
+
+        const request = this._fetchDefinition(normalizedWord, word);
+        this.pending.set(normalizedWord, request);
+
         try {
-            const response = await fetch(this.apiUrl + normalizedWord);
+            return await request;
+        } finally {
+            this.pending.delete(normalizedWord);
+        }
+    }
+
+    async _fetchDefinition(normalizedWord, originalWord) {
+        try {
+            const response = await fetch(this.apiUrl + encodeURIComponent(normalizedWord));
 
             if (!response.ok) {
                 if (response.status === 404) {
                     const result = {
-                        word: word.toUpperCase(),
+                        word: originalWord.toUpperCase(),
                         found: false,
                         message: 'No definition found for this word.'
                     };
@@ -38,14 +55,14 @@ export class DefinitionService {
             }
 
             const data = await response.json();
-            const result = this.parseDefinition(data[0], word);
+            const result = this.parseDefinition(data[0], originalWord);
             this.cache.set(normalizedWord, result);
             return result;
 
         } catch (error) {
             console.error('Error fetching definition:', error);
             return {
-                word: word.toUpperCase(),
+                word: originalWord.toUpperCase(),
                 found: false,
                 message: 'Unable to fetch definition. Please try again.'
             };

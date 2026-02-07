@@ -72,8 +72,8 @@ export class SceneManager {
             this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
 
             // Lower pixel ratio for iOS to prevent memory issues
-            const maxPixelRatio = this.isIOS ? 1.5 : (this.isMobile ? 1.5 : 2);
-            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+            this.maxPixelRatio = this.isIOS ? 1.5 : (this.isMobile ? 1.5 : 2);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxPixelRatio));
 
             // Simpler tone mapping for mobile
             if (!this.isMobile) {
@@ -196,7 +196,10 @@ export class SceneManager {
         this.camera.updateProjectionMatrix();
 
         this.renderer.setSize(width, height, false);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxPixelRatio));
+
+        // Notify that a render is needed after resize
+        if (this.onResizeCallback) this.onResizeCallback();
     }
 
     render() {

@@ -70,69 +70,6 @@ export function calculateRotation(fromLetter, toLetter) {
 }
 
 /**
- * Generate all permutations of letters (for anagram solving)
- * @param {string} letters - String of letters
- * @returns {Set<string>} - Set of all permutations
- */
-export function getPermutations(letters) {
-    const results = new Set();
-
-    function permute(arr, current = '') {
-        if (arr.length === 0) {
-            if (current.length > 0) {
-                results.add(current);
-            }
-            return;
-        }
-
-        // Add current as a valid result (for partial words)
-        if (current.length > 0) {
-            results.add(current);
-        }
-
-        for (let i = 0; i < arr.length; i++) {
-            const newArr = [...arr.slice(0, i), ...arr.slice(i + 1)];
-            permute(newArr, current + arr[i]);
-        }
-    }
-
-    permute(letters.split(''));
-    return results;
-}
-
-/**
- * Generate all combinations of letters (subsets)
- * @param {string} letters - String of letters
- * @param {number} minLength - Minimum word length
- * @returns {Set<string>} - Set of all combinations
- */
-export function getCombinations(letters, minLength = 2) {
-    const results = new Set();
-    const letterArray = letters.toUpperCase().split('');
-
-    function combine(index, current, remaining) {
-        if (current.length >= minLength) {
-            // Generate all permutations of current combination
-            const perms = getPermutations(current.join(''));
-            perms.forEach(p => {
-                if (p.length >= minLength) {
-                    results.add(p);
-                }
-            });
-        }
-
-        for (let i = index; i < remaining.length; i++) {
-            current.push(remaining[i]);
-            combine(i + 1, current, remaining);
-            current.pop();
-        }
-    }
-
-    combine(0, [], letterArray);
-    return results;
-}
-
-/**
  * Debounce function for performance
  * @param {Function} func - Function to debounce
  * @param {number} wait - Wait time in ms

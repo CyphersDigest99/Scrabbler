@@ -1,4 +1,4 @@
-import { calculateWordPoints, getCombinations } from './utils.js';
+import { calculateWordPoints } from './utils.js';
 
 /**
  * Dictionary Manager
@@ -7,6 +7,7 @@ import { calculateWordPoints, getCombinations } from './utils.js';
 export class Dictionary {
     constructor() {
         this.words = new Set();
+        this.wordsByLength = new Map(); // Pre-indexed by length for fast random access
         this.loaded = false;
         this.loading = false;
     }
@@ -48,6 +49,13 @@ export class Dictionary {
                 const word = line.trim().toUpperCase();
                 if (word.length > 0) {
                     this.words.add(word);
+                    // Build length index for fast random access
+                    let bucket = this.wordsByLength.get(word.length);
+                    if (!bucket) {
+                        bucket = [];
+                        this.wordsByLength.set(word.length, bucket);
+                    }
+                    bucket.push(word);
                 }
             }
 
@@ -87,46 +95,6 @@ export class Dictionary {
             word: upperWord,
             points
         };
-    }
-
-    /**
-     * Find all valid words that can be made from given letters
-     * @param {string} letters - Available letters
-     * @param {number} minLength - Minimum word length (default 2)
-     * @returns {Array<{word: string, points: number}>} - Valid words sorted by points
-     */
-    findWords(letters, minLength = 2) {
-        if (!this.loaded) {
-            console.warn('Dictionary not loaded yet');
-            return [];
-        }
-
-        const combinations = getCombinations(letters, minLength);
-        const validWords = [];
-
-        for (const combo of combinations) {
-            if (this.words.has(combo)) {
-                validWords.push({
-                    word: combo,
-                    points: calculateWordPoints(combo)
-                });
-            }
-        }
-
-        // Sort by points (descending), then by word length, then alphabetically
-        validWords.sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            if (b.word.length !== a.word.length) return b.word.length - a.word.length;
-            return a.word.localeCompare(b.word);
-        });
-
-        // Remove duplicates
-        const seen = new Set();
-        return validWords.filter(w => {
-            if (seen.has(w.word)) return false;
-            seen.add(w.word);
-            return true;
-        });
     }
 
     /**
@@ -320,8 +288,8 @@ export class Dictionary {
     getRandomWord(length = 5) {
         if (!this.loaded) return null;
 
-        const wordsOfLength = [...this.words].filter(w => w.length === length);
-        if (wordsOfLength.length === 0) return null;
+        const wordsOfLength = this.wordsByLength.get(length);
+        if (!wordsOfLength || wordsOfLength.length === 0) return null;
 
         const randomIndex = Math.floor(Math.random() * wordsOfLength.length);
         return wordsOfLength[randomIndex];
@@ -335,15 +303,13 @@ export class Dictionary {
     getWordsByLength(length) {
         if (!this.loaded) return [];
 
-        const results = [];
-        for (const word of this.words) {
-            if (word.length === length) {
-                results.push({
-                    word,
-                    points: calculateWordPoints(word)
-                });
-            }
-        }
+        const wordsOfLength = this.wordsByLength.get(length);
+        if (!wordsOfLength) return [];
+
+        const results = wordsOfLength.map(word => ({
+            word,
+            points: calculateWordPoints(word)
+        }));
 
         // Sort alphabetically
         results.sort((a, b) => a.word.localeCompare(b.word));
@@ -480,7 +446,6 @@ export class Dictionary {
 
         // If no fixed letters, return empty (need at least one anchor)
         if (firstFixedPos === -1) {
-            console.log('  No fixed letters in pattern');
             return [];
         }
 
@@ -506,13 +471,6 @@ export class Dictionary {
         const minLength = Math.max(2, patternSpan);
         // Maximum word length: can fill all available positions
         const maxLength = lastAvailablePos - firstAvailablePos + 1;
-
-        console.log('Pattern matching debug:');
-        console.log('  Pattern:', pattern.slice(0, 10).join(','));
-        console.log('  FirstFixed:', firstFixedPos, 'LastFixed:', lastFixedPos);
-        console.log('  FirstAvail:', firstAvailablePos, 'LastAvail:', lastAvailablePos);
-        console.log('  MinLength:', minLength, 'MaxLength:', maxLength);
-        console.log('  RackLetters:', rackLetters, 'Wilds:', wildcardCount);
 
         // Check each word in dictionary
         for (const word of this.words) {
@@ -571,8 +529,6 @@ export class Dictionary {
                 }
             }
         }
-
-        console.log('  Total results:', results.length);
 
         // Sort by points descending, then alphabetically
         results.sort((a, b) => {

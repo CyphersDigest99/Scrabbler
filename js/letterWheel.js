@@ -31,17 +31,9 @@ export class LetterWheel {
         this.currentKeyDirection = 0;
         this.spinSpeed = 1;
 
-        // Center-outward typing tracking
-        this.typingActive = false;
-        this.leftmostTyped = this.CENTER_SLOT;
-        this.rightmostTyped = this.CENTER_SLOT;
-
         // Real-time validation
         this.onRealtimeValidation = null;
         this.isCurrentWordValid = false;
-
-        // Previous word for undo
-        this.previousWord = '';
 
         // Pattern mode lock state
         this.lockedSlots = new Array(this.NUM_SLOTS).fill(false);
@@ -62,7 +54,15 @@ export class LetterWheel {
         this.velocityHistory = []; // Track recent velocities for smoothing
         this.totalDragDistance = 0; // Minimum drag required for momentum
         this.isDragging = false; // True once we've exited the dead zone
-        this.lastTouchWasTap = false; // For keyboard focus on tap
+
+        // Reusable objects for raycasting (avoid per-event allocation)
+        this._raycaster = new THREE.Raycaster();
+        this._mouseVec = new THREE.Vector2();
+
+        // Render callbacks (set by main.js)
+        this.onRenderNeeded = null;
+        this.onContinuousRenderStart = null;
+        this.onContinuousRenderStop = null;
 
         this.group = new THREE.Group();
 
@@ -75,6 +75,22 @@ export class LetterWheel {
         this.createFocusIndicators();
         this.createLockIndicators();
         this.sceneManager.add(this.group);
+
+        // Use GSAP ticker to trigger renders while any tween is active
+        this._gsapActive = false;
+        gsap.ticker.add(() => {
+            if (gsap.globalTimeline.getChildren(true, true, false).length > 0) {
+                if (!this._gsapActive) {
+                    this._gsapActive = true;
+                    if (this.onContinuousRenderStart) this.onContinuousRenderStart();
+                }
+            } else if (this._gsapActive) {
+                this._gsapActive = false;
+                if (this.onContinuousRenderStop) this.onContinuousRenderStop();
+                // One final render after animations end
+                if (this.onRenderNeeded) this.onRenderNeeded();
+            }
+        });
 
         // Center the group horizontally
         const totalWidth = this.NUM_SLOTS * (this.DRUM_WIDTH + this.DRUM_GAP) - this.DRUM_GAP;
@@ -630,20 +646,6 @@ export class LetterWheel {
     }
 
     /**
-     * Motion blur disabled - was affecting all drums instead of just spinning one
-     */
-    applyMotionBlur(enable) {
-        // Disabled: CSS blur affects entire canvas
-    }
-
-    /**
-     * Motion blur disabled
-     */
-    updateMotionBlur(remaining) {
-        // Disabled: CSS blur affects entire canvas
-    }
-
-    /**
      * Get position index for a letter (0=empty, 1=A, 2=B, ... 26=Z)
      */
     getPositionIndex(letter) {
@@ -689,38 +691,22 @@ export class LetterWheel {
 
         // Only add extra spins for typed letters
         let duration = 0.25;
-        let useBlur = false;
         if (addDrama && distance > 0) {
             const extraSpins = Math.floor(distance / 10) + 1;
             rotationDelta += extraSpins * Math.PI * 2;
             duration = 0.35 + (extraSpins * 0.08);
-            useBlur = true;
         }
 
         const newRotation = currentRotation + rotationDelta;
-
-        // Apply motion blur effect for fast spins
-        if (useBlur) {
-            this.applyMotionBlur(true);
-        }
 
         // Animate with snap-to effect at end
         gsap.to(letterGroup.rotation, {
             x: newRotation,
             duration: duration,
             ease: addDrama ? 'power2.out' : 'power3.out',
-            onUpdate: () => {
-                // Reduce blur as spin slows down
-                if (useBlur) {
-                    const progress = gsap.getProperty(letterGroup.rotation, 'x');
-                    const remaining = Math.abs(newRotation - progress) / Math.abs(rotationDelta);
-                    this.updateMotionBlur(remaining);
-                }
-            },
             onComplete: () => {
                 drum.userData.currentRotation = newRotation;
                 this.snapToPosition(slotIndex);
-                this.applyMotionBlur(false);
                 // Trigger real-time validation
                 this.checkRealtimeValidation();
             }
@@ -831,62 +817,6 @@ export class LetterWheel {
     }
 
     /**
-     * Get next slot for center-outward typing
-     * Returns the next available slot, alternating left and right from center
-     */
-    getNextTypingSlot() {
-        // If no typing yet, start at center
-        if (!this.typingActive) {
-            return this.CENTER_SLOT;
-        }
-
-        // Check if we can expand left or right
-        const canExpandLeft = this.leftmostTyped > 0;
-        const canExpandRight = this.rightmostTyped < this.NUM_SLOTS - 1;
-
-        if (!canExpandLeft && !canExpandRight) {
-            return -1; // No more room
-        }
-
-        // Calculate distances from center
-        const leftDist = this.CENTER_SLOT - this.leftmostTyped;
-        const rightDist = this.rightmostTyped - this.CENTER_SLOT;
-
-        // Prefer the side that's less extended, or right if equal
-        if (canExpandRight && (!canExpandLeft || rightDist <= leftDist)) {
-            return this.rightmostTyped + 1;
-        } else {
-            return this.leftmostTyped - 1;
-        }
-    }
-
-    /**
-     * Handle typing a letter - center-outward expansion
-     */
-    typeLetter(letter) {
-        if (!ALPHABET.includes(letter.toUpperCase())) return;
-
-        const nextSlot = this.getNextTypingSlot();
-        if (nextSlot === -1) return; // No room
-
-        // Update typing state
-        if (!this.typingActive) {
-            this.typingActive = true;
-            this.leftmostTyped = nextSlot;
-            this.rightmostTyped = nextSlot;
-        } else {
-            if (nextSlot < this.leftmostTyped) this.leftmostTyped = nextSlot;
-            if (nextSlot > this.rightmostTyped) this.rightmostTyped = nextSlot;
-        }
-
-        // Spin to the letter with drama
-        this.spinToLetter(nextSlot, letter.toUpperCase(), true);
-
-        // Move cursor to the typed slot
-        this.setCursor(nextSlot);
-    }
-
-    /**
      * Start continuous cycling when key is held
      */
     startKeyCycle(direction) {
@@ -939,6 +869,7 @@ export class LetterWheel {
         if (position >= 0 && position < this.NUM_SLOTS) {
             this.cursorPosition = position;
             this.updateFocusIndicator();
+            if (this.onRenderNeeded) this.onRenderNeeded();
         }
     }
 
@@ -1019,15 +950,14 @@ export class LetterWheel {
         const canvas = this.sceneManager.canvas;
         const rect = canvas.getBoundingClientRect();
 
-        const mouse = new THREE.Vector2(
+        this._mouseVec.set(
             ((event.clientX - rect.left) / rect.width) * 2 - 1,
             -((event.clientY - rect.top) / rect.height) * 2 + 1
         );
 
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, this.sceneManager.camera);
+        this._raycaster.setFromCamera(this._mouseVec, this.sceneManager.camera);
 
-        const intersects = raycaster.intersectObjects(this.drums, true);
+        const intersects = this._raycaster.intersectObjects(this.drums, true);
 
         if (intersects.length > 0) {
             let clickedDrum = intersects[0].object;
@@ -1051,15 +981,14 @@ export class LetterWheel {
         const rect = canvas.getBoundingClientRect();
 
         // Convert touch to normalized device coordinates
-        const mouse = new THREE.Vector2(
+        this._mouseVec.set(
             ((touch.clientX - rect.left) / rect.width) * 2 - 1,
             -((touch.clientY - rect.top) / rect.height) * 2 + 1
         );
 
         // Raycast to find which drum was touched
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, this.sceneManager.camera);
-        const intersects = raycaster.intersectObjects(this.drums, true);
+        this._raycaster.setFromCamera(this._mouseVec, this.sceneManager.camera);
+        const intersects = this._raycaster.intersectObjects(this.drums, true);
 
         if (intersects.length > 0) {
             let touchedDrum = intersects[0].object;
@@ -1088,9 +1017,6 @@ export class LetterWheel {
 
                 // Set cursor to this drum
                 this.setCursor(drumIndex);
-
-                // Don't preventDefault here - allow focus to trigger keyboard
-                // preventDefault is called in touchmove to prevent scrolling during drag
             }
         }
     }
@@ -1170,6 +1096,9 @@ export class LetterWheel {
             const posIndex = Math.round(normalizedRotation / anglePerPosition) % this.POSITIONS_PER_DRUM;
             const newLetter = posIndex === 0 ? '' : ALPHABET[posIndex - 1];
             this.currentLetters[this.touchDrumIndex] = newLetter;
+
+            // Request render for the direct rotation update
+            if (this.onRenderNeeded) this.onRenderNeeded();
         }
 
         // Always update prevY for next frame's delta calculation
@@ -1190,13 +1119,10 @@ export class LetterWheel {
         this.totalDragDistance = 0;
         this.isDragging = false;
 
-        // If we never left the dead zone, this was just a tap
-        // Set flag so main.js can trigger keyboard focus
+        // If we never left the dead zone, this was just a tap - do nothing
         if (!wasDragging) {
-            this.lastTouchWasTap = true;
             return;
         }
-        this.lastTouchWasTap = false;
 
         // Momentum requires BOTH:
         // 1. Minimum velocity (fast enough swipe)
@@ -1230,6 +1156,9 @@ export class LetterWheel {
         // Cancel any existing animation
         this.stopMomentum();
         gsap.killTweensOf(letterGroup.rotation);
+
+        // Start continuous rendering for momentum
+        if (this.onContinuousRenderStart) this.onContinuousRenderStart();
 
         // Physics parameters - tuned for heavy brass machinery feel
         const friction = 0.96; // Deceleration per frame - lower = stops faster
@@ -1275,6 +1204,8 @@ export class LetterWheel {
             if (Math.abs(angularVelocity) > minVelocity) {
                 this.momentumAnimation = requestAnimationFrame(animate);
             } else {
+                // Stop continuous rendering for momentum
+                if (this.onContinuousRenderStop) this.onContinuousRenderStop();
                 // Snap to next letter in direction of travel (no snap-back)
                 this.snapToNearestLetter(drumIndex, spinDirection);
                 this.clearDrumMotionBlur(drumIndex);
@@ -1461,19 +1392,9 @@ export class LetterWheel {
     }
 
     clearAll() {
-        // Save current word for undo
-        const currentWord = this.getCurrentWord();
-        if (currentWord.length > 0) {
-            this.previousWord = currentWord;
-        }
-
         for (let i = 0; i < this.NUM_SLOTS; i++) {
             this.clearSlot(i);
         }
-        // Reset typing state
-        this.typingActive = false;
-        this.leftmostTyped = this.CENTER_SLOT;
-        this.rightmostTyped = this.CENTER_SLOT;
         // Return cursor to start (slot 0)
         this.setCursor(0);
     }
@@ -1717,7 +1638,7 @@ export class LetterWheel {
     }
 
     setWord(word) {
-        // Clear slots without saving to previousWord
+        // Clear all slots before setting new word
         for (let i = 0; i < this.NUM_SLOTS; i++) {
             this.clearSlot(i);
         }
