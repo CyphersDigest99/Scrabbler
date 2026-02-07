@@ -926,7 +926,6 @@ export class LetterWheel {
             case 'Enter':
                 event.preventDefault();
                 this.stopKeyCycle();
-                this.validate();
                 break;
             case 'Escape':
                 event.preventDefault();
