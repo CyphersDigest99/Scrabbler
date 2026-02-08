@@ -7,9 +7,8 @@ import { ALPHABET, getLetterIndex, calculateRotation, LETTER_POINTS } from './ut
  * Drums rotate vertically, letters face outward on curved surface
  */
 export class LetterWheel {
-    constructor(sceneManager, onValidate) {
+    constructor(sceneManager) {
         this.sceneManager = sceneManager;
-        this.onValidate = onValidate;
 
         this.NUM_SLOTS = 10;
         this.DRUM_RADIUS = 6;      // Large drum radius - extends beyond window
@@ -1381,13 +1380,6 @@ export class LetterWheel {
         }
 
         return this.currentLetters.slice(start, end + 1).join('');
-    }
-
-    validate() {
-        const word = this.getCurrentWord();
-        if (word.length > 0 && this.onValidate) {
-            this.onValidate(word);
-        }
     }
 
     clearAll() {

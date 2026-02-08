@@ -5,6 +5,7 @@ import { LetterRack } from './letterRack.js';
 
 import { DefinitionService } from './definitions.js';
 import { Tour } from './tour.js';
+import { ScoreKeeper } from './scoreKeeper.js';
 
 /**
  * Scrabbler Main Application
@@ -25,10 +26,6 @@ class Scrabbler {
 
         // Get DOM elements
         this.canvas = document.getElementById('letter-wheel-canvas');
-        this.validationDisplay = document.getElementById('validation-display');
-        this.validationPlate = this.validationDisplay.querySelector('.validation-plate');
-        this.validationIcon = document.getElementById('validation-icon');
-        this.validationText = document.getElementById('validation-text');
         this.rackContainer = document.getElementById('letter-rack');
         this.findWordsBtn = document.getElementById('find-words-btn');
         this.clearRackBtn = document.getElementById('clear-rack-btn');
@@ -39,7 +36,7 @@ class Scrabbler {
         // Create real-time indicator element
         this.realtimeIndicator = document.createElement('div');
         this.realtimeIndicator.className = 'realtime-indicator';
-        this.brassFrame.appendChild(this.realtimeIndicator);
+        this.brassFrame.after(this.realtimeIndicator);
 
         // Definition modal elements
         this.definitionModal = document.getElementById('definition-modal');
@@ -93,10 +90,7 @@ class Scrabbler {
                 this.webGLEnabled = true;
 
                 // Initialize letter wheel
-                this.letterWheel = new LetterWheel(
-                    this.sceneManager,
-                    (word) => this.handleValidation(word)
-                );
+                this.letterWheel = new LetterWheel(this.sceneManager);
 
                 // Set up real-time validation callback
                 this.letterWheel.setRealtimeValidationCallback(
@@ -120,6 +114,10 @@ class Scrabbler {
 
         // Set up guided tour
         this.setupTour();
+
+        // Initialize scorekeeper
+        this.scoreKeeper = new ScoreKeeper();
+        this.setupScoreKeeper();
 
         // Initial render + set up render callbacks
         if (this.webGLEnabled) {
@@ -187,6 +185,25 @@ class Scrabbler {
     }
 
     setupEventListeners() {
+        // View toggle
+        this.wordToolsView = document.getElementById('word-tools-view');
+        this.scorekeeperView = document.getElementById('scorekeeper-view');
+        document.querySelectorAll('.view-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const view = tab.dataset.view;
+                if (view === 'word-tools') {
+                    this.wordToolsView.classList.remove('hidden');
+                    this.scorekeeperView.classList.add('hidden');
+                } else {
+                    this.wordToolsView.classList.add('hidden');
+                    this.scorekeeperView.classList.remove('hidden');
+                    this.refreshScoreKeeperUI();
+                }
+            });
+        });
+
         // Only set up letter wheel events if WebGL is enabled
         if (this.webGLEnabled && this.letterWheel) {
             // Create hidden input for mobile keyboard support
@@ -231,6 +248,15 @@ class Scrabbler {
                     }
                 }
 
+                // Enter key → open definition modal if word is valid
+                if (e.key === 'Enter') {
+                    if (this.realtimeIndicator.classList.contains('valid')) {
+                        const word = this.realtimeIndicator.textContent.split(' - ')[0];
+                        this.showDefinition(word);
+                    }
+                    return;
+                }
+
                 this.letterWheel.handleKeyDown(e);
             });
 
@@ -268,9 +294,13 @@ class Scrabbler {
                     }
                 }
 
-                // Hide validation banner when typing starts
-                if (/^[a-zA-Z]$/.test(e.key)) {
-                    this.hideValidation();
+                // Enter key → open definition modal if word is valid
+                if (e.key === 'Enter') {
+                    if (this.realtimeIndicator.classList.contains('valid')) {
+                        const word = this.realtimeIndicator.textContent.split(' - ')[0];
+                        this.showDefinition(word);
+                    }
+                    return;
                 }
 
                 // Clear real-time validation when deleting
@@ -385,7 +415,6 @@ class Scrabbler {
                 this.letterWheel.clearAll();
             }
             this.clearRealtimeValidation();
-            this.hideValidation();
             // Focus canvas to allow typing
             this.canvas.focus();
         });
@@ -465,8 +494,15 @@ class Scrabbler {
             this.togglePatternMode(this.patternLockToggle.checked);
         });
 
-        // Unified Escape key handler for all modals
+        // Unified Escape/Spacebar handler for all modals
         document.addEventListener('keydown', (e) => {
+            // Spacebar closes definition modal
+            if (e.key === ' ' && !this.definitionModal.classList.contains('hidden')) {
+                e.preventDefault();
+                this.hideDefinitionModal();
+                return;
+            }
+
             if (e.key !== 'Escape') return;
             // Close modals in priority order (topmost first)
             if (!this.definitionModal.classList.contains('hidden')) {
@@ -705,32 +741,6 @@ class Scrabbler {
         }
     }
 
-    handleValidation(word) {
-        const result = this.dictionary.validate(word);
-
-        this.validationPlate.classList.remove('valid', 'invalid');
-
-        if (result.valid) {
-            this.validationPlate.classList.add('valid');
-            this.validationIcon.textContent = '✓';
-            this.validationText.textContent = `VALID - ${result.points} points`;
-        } else {
-            this.validationPlate.classList.add('invalid');
-            this.validationIcon.textContent = '✗';
-            this.validationText.textContent = 'NOT IN DICTIONARY';
-        }
-
-        this.showValidation();
-    }
-
-    showValidation() {
-        this.validationDisplay.classList.remove('hidden');
-    }
-
-    hideValidation() {
-        this.validationDisplay.classList.add('hidden');
-    }
-
     handleRealtimeValidation(word) {
         const result = this.dictionary.validate(word);
 
@@ -827,6 +837,10 @@ class Scrabbler {
 
     hideDefinitionModal() {
         this.definitionModal.classList.add('hidden');
+        // Return focus to the word wheel
+        if (this.wheelHiddenInput) {
+            this.wheelHiddenInput.focus();
+        }
     }
 
     spinRandomWord() {
@@ -837,7 +851,6 @@ class Scrabbler {
             const result = this.dictionary.getRandomPatternWord(pattern, lockedEmpty);
 
             if (result) {
-                this.hideValidation();
                 this.clearRealtimeValidation();
                 // Use pattern-aware spin that keeps locked slots stationary
                 this.letterWheel.spinToPatternWord(result.word, this.lockedSlots, this.lockedEmptySlots, result.startPos);
@@ -857,7 +870,6 @@ class Scrabbler {
         const word = this.dictionary.getRandomWord(length);
 
         if (word) {
-            this.hideValidation();
             this.clearRealtimeValidation();
             this.letterWheel.spinToWord(word);
         }
@@ -1056,6 +1068,246 @@ class Scrabbler {
         }
 
         this.displayPatternMatch(this.patternMatchIndex);
+    }
+
+    // ========== SCOREKEEPER ==========
+
+    setupScoreKeeper() {
+        // Setup screen elements
+        this.skSetup = document.getElementById('sk-setup');
+        this.skGame = document.getElementById('sk-game');
+        this.skGameover = document.getElementById('sk-gameover');
+        this.skP1Select = document.getElementById('sk-player1-select');
+        this.skP2Select = document.getElementById('sk-player2-select');
+        this.skHistoryList = document.getElementById('sk-history-list');
+
+        // Add player buttons
+        document.getElementById('sk-add-player1').addEventListener('click', () => {
+            const input = document.getElementById('sk-new-name1');
+            if (input.value.trim()) {
+                const profile = this.scoreKeeper.createProfile(input.value);
+                input.value = '';
+                this.populateProfileSelects();
+                this.skP1Select.value = profile.id;
+            }
+        });
+
+        document.getElementById('sk-add-player2').addEventListener('click', () => {
+            const input = document.getElementById('sk-new-name2');
+            if (input.value.trim()) {
+                const profile = this.scoreKeeper.createProfile(input.value);
+                input.value = '';
+                this.populateProfileSelects();
+                this.skP2Select.value = profile.id;
+            }
+        });
+
+        // Start game
+        document.getElementById('sk-start-game').addEventListener('click', () => {
+            const p1 = this.skP1Select.value;
+            const p2 = this.skP2Select.value;
+            if (!p1 || !p2) return;
+            if (p1 === p2) return;
+            this.scoreKeeper.newGame(p1, p2);
+            this.showSkScreen('game');
+        });
+
+        // Add turn
+        document.getElementById('sk-add-turn').addEventListener('click', () => this.skAddTurn());
+
+        // Submit turn on Enter in points field
+        document.getElementById('sk-points-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.skAddTurn();
+        });
+
+        // Undo
+        document.getElementById('sk-undo').addEventListener('click', () => {
+            this.scoreKeeper.undoLastTurn();
+            this.refreshGameScreen();
+        });
+
+        // End game
+        document.getElementById('sk-end-game').addEventListener('click', () => {
+            const game = this.scoreKeeper.getCurrentGame();
+            if (!game || game.turns.length === 0) return;
+            const record = this.scoreKeeper.endGame();
+            this.showGameOver(record);
+        });
+
+        // Game over controls
+        document.getElementById('sk-new-game').addEventListener('click', () => {
+            this.showSkScreen('setup');
+        });
+
+        document.getElementById('sk-view-history').addEventListener('click', () => {
+            this.showSkScreen('setup');
+        });
+
+        // If there's an active game, resume it
+        if (this.scoreKeeper.hasActiveGame()) {
+            // Will show when user switches to scorekeeper tab
+        }
+    }
+
+    refreshScoreKeeperUI() {
+        if (this.scoreKeeper.hasActiveGame()) {
+            this.showSkScreen('game');
+        } else {
+            this.showSkScreen('setup');
+        }
+    }
+
+    showSkScreen(screen) {
+        this.skSetup.classList.add('hidden');
+        this.skGame.classList.add('hidden');
+        this.skGameover.classList.add('hidden');
+
+        if (screen === 'setup') {
+            this.skSetup.classList.remove('hidden');
+            this.populateProfileSelects();
+            this.renderHistory();
+        } else if (screen === 'game') {
+            this.skGame.classList.remove('hidden');
+            this.refreshGameScreen();
+        } else if (screen === 'gameover') {
+            this.skGameover.classList.remove('hidden');
+        }
+    }
+
+    populateProfileSelects() {
+        const profiles = this.scoreKeeper.getProfiles();
+        const makeOptions = (selected) => {
+            let html = '<option value="">-- Select --</option>';
+            for (const p of profiles) {
+                const sel = p.id === selected ? ' selected' : '';
+                html += `<option value="${p.id}"${sel}>${this.escapeHtml(p.name)}</option>`;
+            }
+            return html;
+        };
+        this.skP1Select.innerHTML = makeOptions(this.skP1Select.value);
+        this.skP2Select.innerHTML = makeOptions(this.skP2Select.value);
+    }
+
+    skAddTurn() {
+        const wordInput = document.getElementById('sk-word-input');
+        const pointsInput = document.getElementById('sk-points-input');
+        const points = parseInt(pointsInput.value, 10);
+        if (isNaN(points) || points < 0) return;
+
+        const word = wordInput.value.trim() || '-';
+        this.scoreKeeper.addTurn(word, points);
+        wordInput.value = '';
+        pointsInput.value = '';
+        wordInput.focus();
+        this.refreshGameScreen();
+    }
+
+    refreshGameScreen() {
+        const game = this.scoreKeeper.getCurrentGame();
+        if (!game) return;
+
+        const p1Name = this.scoreKeeper.getProfileName(game.player1);
+        const p2Name = this.scoreKeeper.getProfileName(game.player2);
+        const p1Score = this.scoreKeeper.getScore(game.player1);
+        const p2Score = this.scoreKeeper.getScore(game.player2);
+        const currentPlayer = this.scoreKeeper.getCurrentPlayer();
+
+        document.getElementById('sk-p1-name').textContent = p1Name;
+        document.getElementById('sk-p2-name').textContent = p2Name;
+        document.getElementById('sk-p1-score').textContent = p1Score;
+        document.getElementById('sk-p2-score').textContent = p2Score;
+
+        // Active turn highlighting
+        const p1Panel = document.getElementById('sk-p1-panel');
+        const p2Panel = document.getElementById('sk-p2-panel');
+        p1Panel.classList.toggle('active-turn', currentPlayer === game.player1);
+        p2Panel.classList.toggle('active-turn', currentPlayer === game.player2);
+
+        // Turn indicator
+        const indicator = document.getElementById('sk-turn-indicator');
+        indicator.textContent = currentPlayer === game.player1 ? '\u25C0' : '\u25B6';
+
+        // Turn history
+        const turnsList = document.getElementById('sk-turns-list');
+        if (game.turns.length === 0) {
+            turnsList.innerHTML = '<div class="sk-no-history">No turns yet</div>';
+        } else {
+            turnsList.innerHTML = game.turns.map((t, i) => {
+                const isP1 = t.player === game.player1;
+                const name = isP1 ? p1Name : p2Name;
+                return `<div class="sk-turn-item ${isP1 ? 'p1' : 'p2'}">
+                    <span><span class="sk-turn-word">${this.escapeHtml(t.word)}</span><span class="sk-turn-player">${this.escapeHtml(name)}</span></span>
+                    <span class="sk-turn-points">+${t.points}</span>
+                </div>`;
+            }).reverse().join('');
+        }
+
+        // Scroll to top of turns list to show latest
+        turnsList.scrollTop = 0;
+    }
+
+    showGameOver(record) {
+        this.showSkScreen('gameover');
+
+        document.getElementById('sk-final-p1-name').textContent = record.player1.name;
+        document.getElementById('sk-final-p2-name').textContent = record.player2.name;
+        document.getElementById('sk-final-p1-score').textContent = record.player1.score;
+        document.getElementById('sk-final-p2-score').textContent = record.player2.score;
+
+        const banner = document.getElementById('sk-winner-banner');
+        if (record.player1.score > record.player2.score) {
+            banner.textContent = `${record.player1.name} Wins!`;
+        } else if (record.player2.score > record.player1.score) {
+            banner.textContent = `${record.player2.name} Wins!`;
+        } else {
+            banner.textContent = "It's a Tie!";
+        }
+
+        // Game stats
+        const totalTurns = record.turns.length;
+        const p1Turns = record.turns.filter(t => t.player === record.player1.id);
+        const p2Turns = record.turns.filter(t => t.player === record.player2.id);
+        const bestTurn = record.turns.reduce((best, t) => t.points > best.points ? t : best, { points: 0 });
+
+        let statsHtml = `${totalTurns} turns played`;
+        if (bestTurn.points > 0) {
+            const bestName = bestTurn.player === record.player1.id ? record.player1.name : record.player2.name;
+            statsHtml += `<br>Best play: ${bestTurn.word} (${bestTurn.points} pts) by ${this.escapeHtml(bestName)}`;
+        }
+        if (p1Turns.length > 0) {
+            const avg1 = Math.round(record.player1.score / p1Turns.length);
+            const avg2 = p2Turns.length > 0 ? Math.round(record.player2.score / p2Turns.length) : 0;
+            statsHtml += `<br>Avg per turn: ${this.escapeHtml(record.player1.name)} ${avg1} / ${this.escapeHtml(record.player2.name)} ${avg2}`;
+        }
+
+        document.getElementById('sk-game-stats').innerHTML = statsHtml;
+    }
+
+    renderHistory() {
+        const history = this.scoreKeeper.getHistory();
+        if (history.length === 0) {
+            this.skHistoryList.innerHTML = '<div class="sk-no-history">No games played yet</div>';
+            return;
+        }
+
+        this.skHistoryList.innerHTML = history.map((g, i) => {
+            const date = new Date(g.date).toLocaleDateString();
+            const winner = g.player1.score > g.player2.score ? g.player1.name :
+                           g.player2.score > g.player1.score ? g.player2.name : 'Tie';
+            return `<div class="sk-history-item">
+                <div>
+                    <div class="sk-history-result">${this.escapeHtml(g.player1.name)} ${g.player1.score} - ${g.player2.score} ${this.escapeHtml(g.player2.name)}</div>
+                    <div class="sk-history-date">${date}</div>
+                </div>
+                <div class="sk-history-winner">${this.escapeHtml(winner)}${winner !== 'Tie' ? ' won' : ''}</div>
+            </div>`;
+        }).join('');
+    }
+
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     showError(message) {

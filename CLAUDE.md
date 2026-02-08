@@ -48,8 +48,28 @@ main.js (Scrabbler class)
 - Each drum = THREE.Group with cylinder, brass bands, 27 letter positions (empty + A-Z), focus/lock indicators
 - **Center-outward typing**: words expand from slot 5
 - **Momentum cycling**: holding Up/Down accelerates letter scrolling
-- Touch: swipe up/down to spin drums
 - `currentLetters: Array(10)` tracks what's on each drum
+
+#### Touch/Swipe System (mobile)
+The swipe-to-spin system has specific tuning for a "heavy brass machinery" feel:
+
+- **Dead zone**: First 10px of touch movement ignored (prevents taps from spinning)
+- **Direct control**: `pixelsPerRadian = 60` — finger drags drum directly
+- **Momentum trigger**: Requires velocity > 0.8 px/ms AND drag distance > 50px
+- **Momentum physics**: `friction = 0.96`, `maxVelocity = 0.12` rad/frame
+- **Snap direction**: Uses `snapToNearestLetter(drumIndex, direction)` — snaps forward in direction of travel, never backwards
+
+Key state variables for touch:
+```javascript
+this.isDragging        // True once past dead zone
+this.totalDragDistance // Accumulated px for momentum threshold
+this.touchVelocity     // Smoothed via weighted sliding window (last 5 samples)
+this.velocityHistory   // Recent velocity samples
+```
+
+Direction mapping for snap:
+- Swipe DOWN (negative angular velocity) → `Math.floor` → continues toward higher letter indices
+- Swipe UP (positive angular velocity) → `Math.ceil` → continues toward lower letter indices
 
 ### Dictionary (dictionary.js)
 - Words stored in a `Set` for O(1) lookups

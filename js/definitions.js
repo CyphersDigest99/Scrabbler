@@ -5,6 +5,7 @@
 export class DefinitionService {
     constructor() {
         this.cache = new Map();
+        this.maxCacheSize = 500;
         this.pending = new Map(); // Deduplicates in-flight requests
         this.apiUrl = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
     }
@@ -48,7 +49,7 @@ export class DefinitionService {
                         found: false,
                         message: 'No definition found for this word.'
                     };
-                    this.cache.set(normalizedWord, result);
+                    this._cacheSet(normalizedWord, result);
                     return result;
                 }
                 throw new Error('API request failed');
@@ -56,7 +57,7 @@ export class DefinitionService {
 
             const data = await response.json();
             const result = this.parseDefinition(data[0], originalWord);
-            this.cache.set(normalizedWord, result);
+            this._cacheSet(normalizedWord, result);
             return result;
 
         } catch (error) {
@@ -67,6 +68,15 @@ export class DefinitionService {
                 message: 'Unable to fetch definition. Please try again.'
             };
         }
+    }
+
+    _cacheSet(key, value) {
+        // Evict oldest entry if cache is full (Map iterates in insertion order)
+        if (this.cache.size >= this.maxCacheSize) {
+            const oldestKey = this.cache.keys().next().value;
+            this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, value);
     }
 
     /**

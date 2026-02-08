@@ -7,8 +7,9 @@
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
     <meta name="theme-color" content="#1a1510">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Scrabbler">
     <link rel="apple-touch-icon" href="icons/icon-192.svg">
@@ -38,6 +39,15 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- View Toggle Nav -->
+        <nav class="view-toggle">
+            <button class="view-tab active" data-view="word-tools">Word Tools</button>
+            <button class="view-tab" data-view="scorekeeper">Scorekeeper</button>
+        </nav>
+
+        <!-- ========== WORD TOOLS VIEW ========== -->
+        <div id="word-tools-view">
+
         <!-- Header -->
         <header class="steampunk-header">
             <h1>
@@ -89,13 +99,6 @@
                 </button>
             </div>
 
-            <!-- Validation Result Display -->
-            <div id="validation-display" class="validation-display hidden">
-                <div class="validation-plate">
-                    <span id="validation-icon"></span>
-                    <span id="validation-text"></span>
-                </div>
-            </div>
         </section>
 
         <!-- Letter Rack Section -->
@@ -132,6 +135,105 @@
                 <div id="word-list" class="word-list"></div>
             </div>
         </section>
+
+        </div><!-- /word-tools-view -->
+
+        <!-- ========== SCOREKEEPER VIEW ========== -->
+        <div id="scorekeeper-view" class="hidden">
+
+            <!-- Game Setup Screen -->
+            <div id="sk-setup" class="sk-screen">
+                <h2 class="sk-title">Scorekeeper</h2>
+                <p class="sk-subtitle">Track your 2-player Scrabble game</p>
+
+                <div class="sk-player-setup">
+                    <div class="sk-player-group">
+                        <label>Player 1</label>
+                        <select id="sk-player1-select">
+                            <option value="">-- Select --</option>
+                        </select>
+                        <div class="sk-new-profile">
+                            <input type="text" id="sk-new-name1" placeholder="New name" maxlength="20">
+                            <button class="brass-button small" id="sk-add-player1">+</button>
+                        </div>
+                    </div>
+                    <div class="sk-vs">VS</div>
+                    <div class="sk-player-group">
+                        <label>Player 2</label>
+                        <select id="sk-player2-select">
+                            <option value="">-- Select --</option>
+                        </select>
+                        <div class="sk-new-profile">
+                            <input type="text" id="sk-new-name2" placeholder="New name" maxlength="20">
+                            <button class="brass-button small" id="sk-add-player2">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="brass-button" id="sk-start-game">Start Game</button>
+
+                <div id="sk-history-section" class="sk-history-section">
+                    <h3>Game History</h3>
+                    <div id="sk-history-list" class="sk-history-list"></div>
+                </div>
+            </div>
+
+            <!-- Active Game Screen -->
+            <div id="sk-game" class="sk-screen hidden">
+                <div class="sk-scoreboard">
+                    <div class="sk-player-score" id="sk-p1-panel">
+                        <div class="sk-player-name" id="sk-p1-name">Player 1</div>
+                        <div class="sk-score" id="sk-p1-score">0</div>
+                    </div>
+                    <div class="sk-divider">
+                        <span class="sk-turn-indicator" id="sk-turn-indicator"></span>
+                    </div>
+                    <div class="sk-player-score" id="sk-p2-panel">
+                        <div class="sk-player-name" id="sk-p2-name">Player 2</div>
+                        <div class="sk-score" id="sk-p2-score">0</div>
+                    </div>
+                </div>
+
+                <div class="sk-turn-input">
+                    <input type="text" id="sk-word-input" placeholder="Word" maxlength="15" autocomplete="off" autocapitalize="characters">
+                    <input type="number" id="sk-points-input" placeholder="Pts" min="0" max="999">
+                    <button class="brass-button" id="sk-add-turn">Add</button>
+                </div>
+
+                <div class="sk-turn-history">
+                    <h3>Turns</h3>
+                    <div id="sk-turns-list" class="sk-turns-list"></div>
+                </div>
+
+                <div class="sk-game-controls">
+                    <button class="brass-button secondary" id="sk-undo">Undo</button>
+                    <button class="brass-button" id="sk-end-game">End Game</button>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="sk-gameover" class="sk-screen hidden">
+                <div class="sk-winner-banner" id="sk-winner-banner"></div>
+                <div class="sk-final-scores">
+                    <div class="sk-final-player">
+                        <div class="sk-final-name" id="sk-final-p1-name"></div>
+                        <div class="sk-final-score" id="sk-final-p1-score"></div>
+                    </div>
+                    <div class="sk-final-vs">—</div>
+                    <div class="sk-final-player">
+                        <div class="sk-final-name" id="sk-final-p2-name"></div>
+                        <div class="sk-final-score" id="sk-final-p2-score"></div>
+                    </div>
+                </div>
+                <div id="sk-game-stats" class="sk-game-stats"></div>
+                <div class="sk-gameover-controls">
+                    <button class="brass-button" id="sk-new-game">New Game</button>
+                    <button class="brass-button secondary" id="sk-view-history">View History</button>
+                </div>
+            </div>
+
+        </div><!-- /scorekeeper-view -->
+
     </div>
 
     <!-- Word Lists Modal -->
