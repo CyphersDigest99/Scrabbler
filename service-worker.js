@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scrabbler-v4';
+const CACHE_NAME = 'scrabbler-v5';
 
 // Relative asset paths (works with any base URL, including GitHub Pages subpaths)
 const STATIC_ASSET_PATHS = [

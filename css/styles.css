@@ -2433,6 +2433,126 @@ body::before {
     padding: 20px;
 }
 
+/* Player Stats */
+.sk-stats-section {
+    margin-top: 24px;
+}
+
+.sk-stats-section h3 {
+    text-align: center;
+    color: var(--brass-light);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+}
+
+.sk-stats-section select {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--brass-dark);
+    border-radius: 4px;
+    color: var(--parchment);
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    appearance: none;
+    margin-bottom: 10px;
+}
+
+.sk-stats-section select:focus {
+    outline: none;
+    border-color: var(--brass);
+}
+
+.sk-stats-display {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--brass-dark);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.sk-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.sk-stat-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--brass-dark);
+    border-radius: 4px;
+    padding: 8px 6px;
+    text-align: center;
+}
+
+.sk-stat-value {
+    color: var(--brass-light);
+    font-size: 1.25rem;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.sk-stat-value.sk-stat-small {
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.sk-stat-label {
+    color: var(--brass-dark);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+}
+
+.sk-best-word-row {
+    color: var(--parchment);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.sk-best-word {
+    color: var(--brass-light);
+    font-weight: bold;
+}
+
+.sk-sparkline-row {
+    text-align: center;
+}
+
+.sk-sparkline-label {
+    color: var(--brass-dark);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.sk-sparkline {
+    display: block;
+    margin: 0 auto;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--brass-dark);
+    border-radius: 3px;
+}
+
+/* Data Management */
+.sk-data-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--brass-dark);
+}
+
+.sk-data-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 /* Scorekeeper Responsive */
 @media (max-width: 600px) {
     .view-toggle {

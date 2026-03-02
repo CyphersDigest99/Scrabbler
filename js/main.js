@@ -1143,6 +1143,44 @@ class Scrabbler {
             this.showSkScreen('setup');
         });
 
+        // Player stats select
+        document.getElementById('sk-stats-player').addEventListener('change', (e) => {
+            this.renderPlayerStats(e.target.value);
+        });
+
+        // Export data
+        document.getElementById('sk-export').addEventListener('click', () => {
+            const json = this.scoreKeeper.exportData();
+            const date = new Date().toISOString().slice(0, 10);
+            const a = document.createElement('a');
+            a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+            a.download = `scrabbler-data-${date}.json`;
+            a.click();
+        });
+
+        // Import data
+        const importFile = document.getElementById('sk-import-file');
+        document.getElementById('sk-import-btn').addEventListener('click', () => {
+            importFile.value = '';
+            importFile.click();
+        });
+        importFile.addEventListener('change', () => {
+            const file = importFile.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = this.scoreKeeper.importData(e.target.result);
+                if (result.ok) {
+                    this.populateProfileSelects();
+                    this.renderHistory();
+                    alert(`Import successful: ${result.gamesImported} new game(s), ${result.profilesImported} profile(s).`);
+                } else {
+                    alert(`Import failed: ${result.error}`);
+                }
+            };
+            reader.readAsText(file);
+        });
+
         // If there's an active game, resume it
         if (this.scoreKeeper.hasActiveGame()) {
             // Will show when user switches to scorekeeper tab
@@ -1186,6 +1224,16 @@ class Scrabbler {
         };
         this.skP1Select.innerHTML = makeOptions(this.skP1Select.value);
         this.skP2Select.innerHTML = makeOptions(this.skP2Select.value);
+
+        // Keep stats select in sync
+        const statsSelect = document.getElementById('sk-stats-player');
+        const prev = statsSelect.value;
+        let statsHtml = '<option value="">— Select player —</option>';
+        for (const p of profiles) {
+            const sel = p.id === prev ? ' selected' : '';
+            statsHtml += `<option value="${p.id}"${sel}>${this.escapeHtml(p.name)}</option>`;
+        }
+        statsSelect.innerHTML = statsHtml;
     }
 
     skAddTurn() {
@@ -1302,6 +1350,85 @@ class Scrabbler {
                 <div class="sk-history-winner">${this.escapeHtml(winner)}${winner !== 'Tie' ? ' won' : ''}</div>
             </div>`;
         }).join('');
+    }
+
+    renderPlayerStats(profileId) {
+        const display = document.getElementById('sk-stats-display');
+        if (!profileId) {
+            display.classList.add('hidden');
+            return;
+        }
+        const ins = this.scoreKeeper.getInsights(profileId);
+        if (ins.gamesPlayed === 0) {
+            display.innerHTML = '<p class="sk-no-history">No games recorded yet</p>';
+            display.classList.remove('hidden');
+            return;
+        }
+
+        const lastPlayedStr = ins.lastPlayed
+            ? new Date(ins.lastPlayed).toLocaleDateString()
+            : '—';
+        const bestWordHtml = ins.bestWord
+            ? `<span class="sk-best-word">${this.escapeHtml(ins.bestWord.word)} (${ins.bestWord.points} pts)</span>`
+            : '—';
+        const sparkline = ins.scoreHistory.length >= 2
+            ? this.makeSparkline(ins.scoreHistory.map(e => e.score))
+            : '';
+
+        display.innerHTML = `
+            <div class="sk-stat-grid">
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value">${ins.gamesPlayed}</div>
+                    <div class="sk-stat-label">Games</div>
+                </div>
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value">${ins.winRate}%</div>
+                    <div class="sk-stat-label">Win Rate</div>
+                </div>
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value">${ins.avgScore}</div>
+                    <div class="sk-stat-label">Avg Score</div>
+                </div>
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value">${ins.highestGameScore}</div>
+                    <div class="sk-stat-label">Best Game</div>
+                </div>
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value">${ins.avgPointsPerTurn}</div>
+                    <div class="sk-stat-label">Avg/Turn</div>
+                </div>
+                <div class="sk-stat-card">
+                    <div class="sk-stat-value sk-stat-small">${lastPlayedStr}</div>
+                    <div class="sk-stat-label">Last Played</div>
+                </div>
+            </div>
+            ${ins.bestWord ? `<div class="sk-best-word-row">Best word: ${bestWordHtml}</div>` : ''}
+            ${sparkline ? `<div class="sk-sparkline-row">
+                <div class="sk-sparkline-label">Score trend &mdash; ${ins.scoreHistory.length} games</div>
+                ${sparkline}
+            </div>` : ''}
+        `;
+        display.classList.remove('hidden');
+    }
+
+    makeSparkline(scores) {
+        const w = 200, h = 48, padX = 4, padY = 6;
+        const min = Math.min(...scores);
+        const max = Math.max(...scores);
+        const range = max - min || 1;
+        const n = scores.length;
+
+        const pts = scores.map((s, i) => {
+            const x = padX + (i / (n - 1)) * (w - 2 * padX);
+            const y = h - padY - ((s - min) / range) * (h - 2 * padY);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        });
+        const [lastX, lastY] = pts[pts.length - 1].split(',');
+
+        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="sk-sparkline" aria-hidden="true">
+            <polyline points="${pts.join(' ')}" fill="none" stroke="var(--brass)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="${lastX}" cy="${lastY}" r="3" fill="var(--brass-light)"/>
+        </svg>`;
     }
 
     escapeHtml(str) {

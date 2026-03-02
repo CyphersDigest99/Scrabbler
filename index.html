@@ -176,6 +176,24 @@
                     <h3>Game History</h3>
                     <div id="sk-history-list" class="sk-history-list"></div>
                 </div>
+
+                <!-- Player Stats -->
+                <div class="sk-stats-section">
+                    <h3>Player Stats</h3>
+                    <select id="sk-stats-player">
+                        <option value="">— Select player —</option>
+                    </select>
+                    <div id="sk-stats-display" class="hidden"></div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="sk-data-section">
+                    <div class="sk-data-controls">
+                        <button class="brass-button small" id="sk-export">Export Data</button>
+                        <button class="brass-button small secondary" id="sk-import-btn">Import Data</button>
+                        <input type="file" id="sk-import-file" accept=".json" style="display:none">
+                    </div>
+                </div>
             </div>
 
             <!-- Active Game Screen -->
